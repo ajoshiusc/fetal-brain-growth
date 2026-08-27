@@ -29,6 +29,8 @@ def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
     assert "reconstructed centiles" in demo_markdown
     assert "Q_q(t) = max(0" in demo_markdown
     assert "bounded to P3–P97" in demo_markdown
+    assert "public case on FeTA-generated matched quantiles" in demo_markdown
+    assert "no FeTA subject image" in demo_markdown
     assert "protocol-matched teaching reference" in feta_markdown
     assert "Q_q(GA) = exp" in feta_markdown
     assert "30 controls" in feta_markdown
@@ -39,3 +41,10 @@ def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
     )
     assert "ten_case_growth_chart_ren2022.png" in feta_code
     assert "ren_scores = score_against_curves" in feta_code
+
+    demo_code = "\n".join(
+        "".join(cell["source"]) for cell in demo["cells"] if cell["cell_type"] == "code"
+    )
+    assert "growth_chart_feta_neurotypical.png" in demo_code
+    assert "definition_guard=False" in demo_code
+    assert "FeTA quantile plot skipped" in demo_code

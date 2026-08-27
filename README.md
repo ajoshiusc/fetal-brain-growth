@@ -373,7 +373,10 @@ The public, fully executed demonstration is
 or standalone [`docs/Radiology_Meeting_Demo.html`](docs/Radiology_Meeting_Demo.html).
 It creates or reuses the FetalSynthSeg prediction for the real 30-week image,
 checks it against the manual labels, measures tissue and aggregate volumes,
-and plots seven quantiles for all eight Ren measures. Reusing an existing
+plots seven quantiles for all eight Ren measures, and—when the local fit or
+FeTA data is available—adds nine FeTA/FetalSynthSeg-matched quantile panels for
+the same public atlas observation. The FeTA section contains aggregate curves
+only and no FeTA subject image. Reusing an existing
 prediction needs only the notebook dependencies; MONAI and PyTorch are imported
 only when inference is actually required. Run
 `python scripts/build_demo_notebook.py` to reconstruct the notebook source.
