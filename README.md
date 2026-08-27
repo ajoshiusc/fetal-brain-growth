@@ -36,7 +36,12 @@ manual labels. See [real-example provenance](docs/REAL_EXAMPLE.md) and the
 - 300-dpi PNG output and vector SVG/PDF support through Matplotlib;
 - an executed real-data Jupyter notebook and a local ten-case FeTA gallery.
 
-![Real fetal case on multiple volume quantiles](docs/images/real_fetal_growth_chart.png)
+The public figure below uses only the CC0 IMAGINE atlas example—no FeTA case is
+shown. It includes every Ren 2022 volume measure available in the project. The
+four directly aligned measures are green; the four boundary-mismatched measures
+are orange and explicitly comparison-only.
+
+![Public fetal MRI example across all eight Ren growth charts](docs/images/real_fetal_growth_chart.png)
 
 ## Install
 
@@ -80,7 +85,7 @@ fbg segment \
   --metadata demo_outputs/real_example/segmentation_provenance.json
 ```
 
-Recreate the segmentation QC, growth chart, single-slide case report, Dice
+Recreate the segmentation QC, eight-panel growth chart and case report, Dice
 table, volume table, scores, and provenance:
 
 ```bash
@@ -102,7 +107,7 @@ population-calibrated diagnostic probability.
 | External CSF | 95.0 mL | P7 | within interval |
 | Cerebellum | 8.0 mL | P75 | within interval |
 
-![Real one-slide fetal segmentation and growth report](docs/images/real_fetal_case_report.png)
+![Public fetal segmentation and eight-panel growth report](docs/images/real_fetal_case_report.png)
 
 ## Analyze one clinical SVR case
 
@@ -197,7 +202,8 @@ independent cohort processed with the same frozen pipeline remains preferable.
 
 If the FeTA 2022 BIDS release is available locally, the following command makes
 a 2×5 MRI/outline overview, a nine-panel cohort growth chart, ten individual
-case cards, volumes, research screens, fitted reference files, and QC metadata:
+case cards with all nine matched growth panels, volumes, research screens,
+fitted reference files, and QC metadata:
 
 ```bash
 fbg feta-gallery \
@@ -213,7 +219,8 @@ Git-ignored.
 
 Use `--reference ren2022` to reproduce the older four-measure literature
 comparison. The matched FeTA reference is now the default because it produces
-definition-compatible charts for all nine measures.
+definition-compatible charts for all nine measures in both cohort and
+individual-case reports.
 
 ## Literature alternative: Ren 2022 weekly summaries
 
@@ -332,7 +339,7 @@ The public, fully executed demonstration is
 or standalone [`docs/Radiology_Meeting_Demo.html`](docs/Radiology_Meeting_Demo.html).
 It runs FetalSynthSeg on the real 30-week image, checks it against the manual
 labels, measures tissue and aggregate volumes, plots seven quantiles, and makes
-the one-slide radiology case report. Run
+the radiology case report. Run
 `python scripts/build_demo_notebook.py` to reconstruct the notebook source.
 
 ## Intended use

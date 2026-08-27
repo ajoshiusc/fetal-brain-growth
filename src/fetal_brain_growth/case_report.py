@@ -57,18 +57,26 @@ def save_case_report(
     regions: tuple[str, ...] = ("total_brain", "intracranial_volume", "external_csf", "cerebellum"),
     dpi: int = 300,
 ) -> Path:
-    """Save a radiology-ready real-case card with four reference panels."""
+    """Save a radiology-ready real-case card with the requested reference panels."""
 
     intensity, labels, orientation = load_aligned_canonical(image_path, segmentation_path)
     foreground = intensity[labels > 0]
     vmin, vmax = np.percentile(foreground, [1, 99]) if foreground.size else (float(intensity.min()), float(intensity.max()))
-    fig = plt.figure(figsize=(18, 9.5), facecolor="white")
-    grid = fig.add_gridspec(2, 4, height_ratios=(1.05, 1.0), hspace=0.30, wspace=0.27)
+    chart_columns = 3 if len(regions) >= 7 else min(4, len(regions))
+    chart_rows = int(np.ceil(len(regions) / chart_columns))
+    fig = plt.figure(figsize=(18, 5.0 + 4.5 * chart_rows), facecolor="white")
+    grid = fig.add_gridspec(
+        1 + chart_rows,
+        12,
+        height_ratios=(1.05, *([1.0] * chart_rows)),
+        hspace=0.38,
+        wspace=0.32,
+    )
     for index, view in enumerate(VIEW_SPECS):
-        ax = fig.add_subplot(grid[0, index], facecolor="#080B10")
+        ax = fig.add_subplot(grid[0, index * 3 : (index + 1) * 3], facecolor="#080B10")
         _draw_image_panel(ax, intensity, labels, view, float(vmin), float(vmax))
 
-    text_axis = fig.add_subplot(grid[0, 3])
+    text_axis = fig.add_subplot(grid[0, 9:12])
     text_axis.axis("off")
     text_axis.text(0, 0.98, segmentation_source, va="top", fontsize=13, weight="bold", color=INK)
     if dice is not None:
@@ -82,7 +90,11 @@ def save_case_report(
     text_axis.legend(handles=legend, loc="lower left", frameon=False, fontsize=8.5, ncol=1, borderaxespad=0)
 
     for index, region in enumerate(regions):
-        ax = fig.add_subplot(grid[1, index])
+        row, column = divmod(index, chart_columns)
+        column_span = 12 // chart_columns
+        ax = fig.add_subplot(
+            grid[1 + row, column * column_span : (column + 1) * column_span]
+        )
         curve = curves.loc[curves.region == region].sort_values("gestational_age_weeks")
         _draw_quantiles(ax, curve, list(DEFAULT_QUANTILES))
         point = scores.loc[scores.region == region].iloc[0]

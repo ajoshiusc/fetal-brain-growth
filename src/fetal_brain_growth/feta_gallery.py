@@ -217,6 +217,7 @@ def build_feta_gallery(
             subject_id=str(record["subject_id"]),
             gestational_age_weeks=float(record["gestational_age_weeks"]),
             segmentation_source=f"FeTA expert annotation • {record['feta_phenotype']}",
+            regions=score_regions,
             dpi=220,
         )
 

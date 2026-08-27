@@ -4,6 +4,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pandas as pd
 
 from fetal_brain_growth.case_report import save_case_report
 from fetal_brain_growth.references import build_table_curves, score_against_curves
@@ -47,3 +48,33 @@ def test_case_report_writes_radiology_card(tmp_path: Path):
         dpi=100,
     )
     assert output.stat().st_size > 50_000
+
+    extra_curve = curves.loc[curves.region == "total_brain"].copy()
+    extra_curve["region"] = "white_matter"
+    nine_curves = pd.concat([curves, extra_curve], ignore_index=True)
+    nine_regions = tuple(nine_curves.region.drop_duplicates())
+    nine_scores = []
+    for region in nine_regions:
+        curve = nine_curves.loc[nine_curves.region == region]
+        point = curve.iloc[np.abs(curve.gestational_age_weeks - 30.0).argmin()]
+        nine_scores.append(
+            {
+                "region": region,
+                "gestational_age_weeks": 30.0,
+                "volume_ml": point.p50_ml,
+                "estimated_percentile_bounded": 50.0,
+                "status": "within_reference_interval",
+            }
+        )
+    nine_panel_output = save_case_report(
+        image,
+        segmentation,
+        nine_curves,
+        pd.DataFrame(nine_scores),
+        tmp_path / "nine_panel_case_report.png",
+        subject_id="test-case",
+        gestational_age_weeks=30.0,
+        regions=nine_regions,
+        dpi=60,
+    )
+    assert nine_panel_output.stat().st_size > 50_000

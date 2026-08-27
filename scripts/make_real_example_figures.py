@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fetal_brain_growth.case_report import save_case_report
 from fetal_brain_growth.charts import save_growth_chart
+from fetal_brain_growth.labels import REFERENCE_GROUPS
 from fetal_brain_growth.radiology import save_radiology_figure
 from fetal_brain_growth.references import build_table_curves, score_against_curves
 from fetal_brain_growth.validation import tissue_dice
@@ -50,9 +51,12 @@ def main() -> None:
         curves,
         images_dir / "real_fetal_growth_chart.png",
         observations=scores,
-        regions=["total_brain", "intracranial_volume", "external_csf", "cerebellum"],
-        title="Real fetal MRI example on volume references",
-        subtitle="30-week IMAGINE atlas example • FetalSynthSeg prediction • Ren 2022 summary reference",
+        regions=tuple(REFERENCE_GROUPS),
+        title="Public fetal MRI example across all Ren 2022 volume measures",
+        subtitle=(
+            "30-week CC0 IMAGINE atlas • FetalSynthSeg prediction • "
+            "green = definition-aligned screen; orange = comparison only"
+        ),
         dpi=300,
     )
     save_case_report(
@@ -64,6 +68,7 @@ def main() -> None:
         subject_id=subject_id,
         gestational_age_weeks=args.gestational_age,
         dice=dice,
+        regions=tuple(REFERENCE_GROUPS),
         dpi=300,
     )
 
