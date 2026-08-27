@@ -27,6 +27,12 @@ def main() -> None:
         nbf.v4.new_code_cell(
             "from pathlib import Path\n"
             "import json\n"
+            "import sys\n"
+            "ROOT = Path.cwd().resolve()\n"
+            "if ROOT.name == 'notebooks': ROOT = ROOT.parent\n"
+            "if not (ROOT/'src/fetal_brain_growth').is_dir():\n"
+            "    raise FileNotFoundError(f'Run this notebook from the fetal-brain-growth repository; cwd={ROOT}')\n"
+            "sys.path.insert(0, str(ROOT/'src'))\n"
             "import pandas as pd\n"
             "from IPython.display import Image, display\n"
             "from fetal_brain_growth.feta_gallery import build_feta_gallery\n"
@@ -108,6 +114,8 @@ def main() -> None:
             "- A larger independent cohort processed with the same frozen pipeline is required for clinical validation."
         ),
     ]
+    for index, cell in enumerate(notebook["cells"]):
+        cell["id"] = f"feta-meeting-{index:02d}"
     nbf.write(notebook, root / "notebooks" / "FeTA_10_Case_Meeting.ipynb")
 
 
