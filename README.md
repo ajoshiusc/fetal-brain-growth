@@ -35,7 +35,7 @@ not be treated as a diagnostic exemplar.
 - canonical RAS axial/coronal/sagittal panels in radiological convention;
 - large, presentation-readable typography with 300-dpi PNG output and vector
   SVG/PDF support through Matplotlib;
-- an executed real-data Jupyter notebook and a local ten-case FeTA gallery.
+- an executed real-data Jupyter demonstration.
 
 ## Reference hierarchy
 
@@ -248,38 +248,6 @@ This small, cross-sectional, partially in-sample reference is useful for
 teaching and pipeline development, not a validated clinical norm. A larger
 independent cohort processed with the same frozen pipeline remains preferable.
 
-## Ten real FeTA cases for a local meeting
-
-If the FeTA 2022 BIDS release is available locally, the following command makes
-a 2×5 MRI/outline overview, a nine-panel cohort growth chart, ten individual
-case cards with all nine matched growth panels, volumes, research screens,
-fitted reference files, and QC metadata:
-
-```bash
-fbg feta-gallery \
-  --output-dir meeting_outputs/feta_10_cases_matched
-```
-
-The default teaching set is `sub-036, sub-027, sub-034, sub-051, sub-061,
-sub-007, sub-014, sub-001, sub-019, sub-050`. It deliberately includes both
-FeTA phenotype groups. Dataset phenotype and a volume-reference flag are shown
-as separate fields; neither is converted into an automated diagnosis. FeTA raw
-data and derived meeting images remain subject to FeTA access terms and are
-Git-ignored.
-
-The local FeTA meeting notebook displays **both** quantile constructions for
-the same ten measured cases: nine protocol-matched FeTA log-volume panels and
-eight Ren weekly-mean/SD Normal-approximation panels. In the Ren chart, only
-the four definition-aligned screens are green/red; definition-mismatched
-measurements are orange and comparison-only. This side-by-side presentation
-demonstrates reference sensitivity and must not be interpreted as longitudinal
-change within a fetus.
-
-Use `--reference ren2022` to reproduce the older four-measure literature
-comparison. The matched FeTA reference is now the default because it produces
-definition-compatible charts for all nine measures in both cohort and
-individual-case reports.
-
 ## Secondary, compatibility-limited reference: Ren 2022 weekly summaries
 
 Build the conservative interpolated reference:
@@ -404,14 +372,6 @@ reference. The four conservatively matched Ren comparisons therefore remain
 available, while the local FeTA fit is the exact-label default.
 
 ## Notebook
-
-For the locally mounted FeTA data, open
-[`notebooks/FeTA_10_Case_Meeting.ipynb`](notebooks/FeTA_10_Case_Meeting.ipynb).
-It builds or reuses the 10-case expert-segmentation gallery, displays all nine
-matched charts, lists the research flags, and exposes the fit diagnostics. The
-tracked notebook has no controlled-data outputs; after running it locally, use
-the executed copy under `meeting_outputs/` for the meeting. Rebuild its clean
-source with `python scripts/build_feta_meeting_notebook.py`.
 
 The public, fully executed demonstration is
 [`notebooks/Radiology_Meeting_Demo.ipynb`](notebooks/Radiology_Meeting_Demo.ipynb)
