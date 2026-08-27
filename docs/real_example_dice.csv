@@ -1,0 +1,8 @@
+label,region,tissue,dice,predicted_voxels,manual_voxels
+1,external_csf,External CSF,0.8712153509745637,760385,766606
+2,cortical_gray_matter,Cortical gray matter,0.80002318888771,403890,510341
+3,white_matter,White matter,0.9096651272327693,785310,739926
+4,ventricles,Ventricles,0.6847384797747814,86836,48144
+5,cerebellum,Cerebellum,0.9252031225107535,64346,61194
+6,deep_gray_matter,Deep gray matter,0.8530179005127283,87843,90029
+7,brainstem,Brainstem,0.8114527645222633,40887,42726

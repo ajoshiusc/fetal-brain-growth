@@ -6,26 +6,35 @@
 
 Standalone Python tools for fetal T2 MRI tissue segmentation, affine-aware
 volumetry, transparent growth references, and presentation-quality radiology
-figures. The package supports the public FetalSynthSeg model and FeTA labels,
-but does not redistribute its checkpoint or any clinical/FeTA subject image.
+figures. The package uses the public FetalSynthSeg implementation and its seven
+FeTA tissue labels without redistributing the non-commercial checkpoint or any
+clinical/controlled-access MRI.
 
-![Standard-orientation fetal MRI with segmentation outlines](docs/images/synthetic_segmentation_qc.png)
+![Real fetal MRI with FetalSynthSeg outlines in standard orientation](docs/images/real_fetal_segmentation_qc.png)
+
+This is a **real 30-week fetal T2 atlas image**, not a synthetic phantom. It is
+the `sub-sta30` example distributed by FetalSynthSeg and originates from the CC0
+[IMAGINE Fetal T2-weighted MRI Atlas](https://doi.org/10.7910/DVN/WE9JVR).
+The automatic result has mean seven-tissue Dice 0.836 against the supplied
+manual labels. See [real-example provenance](docs/REAL_EXAMPLE.md) and the
+[per-label Dice table](docs/real_example_dice.csv).
 
 ## What is included
 
 - a checksum-verified inference wrapper for the official FetalSynthSeg v1
   checkpoint;
 - seven FeTA tissue volumes plus definition-aware literature aggregates;
-- P3/P10/P25/P50/P75/P90/P97 charts from published weekly summary values;
+- P3/P10/P25/P50/P75/P90/P97 charts reconstructed from published weekly
+  summary values;
 - interpolated, quadratic, cubic, and cross-validated automatic table fitting;
 - direct spline/quadratic/cubic quantile regression for a local
   FetalSynthSeg-matched control cohort;
-- published coefficient-only mean models (Jarvis 2016 and Ren 2022 TBV);
+- published coefficient-only mean models from Jarvis 2016 and Ren 2022;
 - canonical RAS axial/coronal/sagittal panels in radiological convention;
-- PNG, SVG, or PDF output through Matplotlib, with 300 dpi PNG defaults;
-- a public-safe synthetic example and a meeting-ready Jupyter notebook.
+- 300-dpi PNG output and vector SVG/PDF support through Matplotlib;
+- an executed real-data Jupyter notebook and a local ten-case FeTA gallery.
 
-![Four-panel multi-quantile growth chart](docs/images/multi_quantile_growth_chart.png)
+![Real fetal case on multiple volume quantiles](docs/images/real_fetal_growth_chart.png)
 
 ## Install
 
@@ -41,8 +50,8 @@ python -m pip install -e '.[notebook,test]'
 pytest
 ```
 
-FetalSynthSeg is public source but **not public domain**. Its license is for
-academic, non-commercial research. Read the upstream
+FetalSynthSeg is public source but **not public domain**. Its software and
+checkpoint license is for academic, non-commercial research. Read the upstream
 [license](https://github.com/Medical-Image-Analysis-Laboratory/FetalSynthSeg/blob/main/LICENSE),
 then let the installer pin the audited source commit, download the checkpoint,
 and verify its SHA-256:
@@ -51,13 +60,53 @@ and verify its SHA-256:
 ./scripts/install_fetalsynthseg.sh --accept-license
 ```
 
-The installer keeps `models/` and `third_party/` out of Git. For PHI safety,
-`data/`, DICOM, checkpoints, and common clinical-data directories are ignored.
+The upstream clone also supplies the real CC0 `sub-sta30` example used by the
+notebook. The installer keeps `models/` and `third_party/` out of Git. For PHI
+safety, `data/`, DICOM, checkpoints, and common clinical-data directories are
+ignored.
 
-## One case: segment, review, and measure
+## Real example: reproduce the checked-in figures
 
-Input should be a skull-stripped/cropped 3-D T2w SVR reconstruction. FetalSynthSeg
-preprocessing is reproduced at 0.5-mm isotropic resolution in canonical RAS.
+Run automatic segmentation:
+
+```bash
+fbg segment \
+  --image third_party/FetalSynthSeg/data/sub-sta30/anat/sub-sta30_rec-irtk_T2w.nii.gz \
+  --checkpoint models/KISPI-all_fss.ckpt \
+  --output demo_outputs/real_example/sub-sta30_fetalsynthseg.nii.gz \
+  --qc demo_outputs/real_example/segmentation_qc.png \
+  --metadata demo_outputs/real_example/segmentation_provenance.json
+```
+
+Recreate the segmentation QC, growth chart, single-slide case report, Dice
+table, volume table, scores, and provenance:
+
+```bash
+python scripts/make_real_example_figures.py \
+  --image third_party/FetalSynthSeg/data/sub-sta30/anat/sub-sta30_rec-irtk_T2w.nii.gz \
+  --manual-segmentation third_party/FetalSynthSeg/data/sub-sta30/anat/sub-sta30_rec-irtk_T2w_dseg.nii.gz \
+  --predicted-segmentation demo_outputs/real_example/sub-sta30_fetalsynthseg.nii.gz \
+  --output-dir docs
+```
+
+The automatic volumes place this example as follows. The percentile estimate is
+interpolated between the available quantiles and bounded to P3–P97; it is not a
+population-calibrated diagnostic probability.
+
+| Definition-aligned measure | Volume | Bounded position | P3–P97 screen |
+|---|---:|---:|---|
+| Total brain | 172.8 mL | P33 | within interval |
+| Intracranial volume | 278.7 mL | P7 | within interval |
+| External CSF | 95.0 mL | P7 | within interval |
+| Cerebellum | 8.0 mL | P75 | within interval |
+
+![Real one-slide fetal segmentation and growth report](docs/images/real_fetal_case_report.png)
+
+## Analyze one clinical SVR case
+
+Input should be a skull-stripped/cropped 3-D T2w SVR reconstruction. The wrapper
+reproduces FetalSynthSeg preprocessing at 0.5-mm isotropic resolution, runs the
+official model, and restores labels to the native image geometry.
 
 ```bash
 fbg segment \
@@ -68,21 +117,41 @@ fbg segment \
   --metadata outputs/case001_segmentation_provenance.json
 ```
 
-Review the outline panel before using any volume. The figure resamples the
-segmentation to the canonical-RAS MRI grid with nearest-neighbor interpolation,
-selects the largest labeled cross-section in each plane, and labels orientation
-explicitly. Patient right appears on image left in axial and coronal panels.
+Review the complete 3-D segmentation before using any volume. The QC figure
+resamples the segmentation to the canonical-RAS MRI grid with nearest-neighbor
+interpolation, selects the largest labeled cross-section in each plane, and
+labels orientation explicitly. Patient right appears on image left in axial
+and coronal panels.
 
-For a cohort, edit [`examples/manifest.csv`](examples/manifest.csv), then:
+For a cohort, edit [`examples/manifest.csv`](examples/manifest.csv), then run:
 
 ```bash
 fbg measure --manifest examples/manifest.csv --output-dir outputs/cohort
 ```
 
-NIfTI voxel volume is `abs(det(affine[0:3,0:3])) / 1000` mL; it is not inferred
-from array dimensions or assumed isotropic.
+NIfTI voxel volume is `abs(det(affine[0:3,0:3])) / 1000` mL; it is never
+inferred from array dimensions or assumed isotropic.
 
-## Reference option A: Ren 2022 weekly summaries
+## Ten real FeTA cases for a local meeting
+
+If the FeTA 2022 BIDS release is available locally, the following command makes
+a 2×5 MRI/outline overview, four-panel cohort growth chart, ten individual case
+cards, volumes, research screens, and QC metadata:
+
+```bash
+fbg feta-gallery \
+  --feta-root /path/to/feta_2.2 \
+  --output-dir meeting_outputs/feta_10_cases
+```
+
+The default teaching set is `sub-036, sub-027, sub-034, sub-051, sub-061,
+sub-005, sub-014, sub-001, sub-019, sub-050`. It deliberately includes both
+FeTA phenotype groups. Dataset phenotype and a volume-reference flag are shown
+as separate fields; neither is converted into an automated diagnosis. FeTA raw
+data and derived meeting images remain subject to FeTA access terms and are
+Git-ignored.
+
+## Reference A: Ren 2022 weekly summaries
 
 Build the conservative interpolated reference:
 
@@ -101,13 +170,14 @@ fbg chart \
   --output outputs/cohort/growth_chart.png
 ```
 
-The weekly spreadsheet was transcribed from Ren et al. Table 1. Multiple
-centiles are reconstructed as `mean(age) + Phi_inverse(q) × SD(age)`. This is
-an explicit Normal approximation to published summary data—not a refit of
-participant data. Full construction details, corrections, and label mappings
-are in [`references/README.md`](references/README.md).
+The spreadsheet is a double-checked transcription of Ren et al. Table 1 weekly
+mean and SD values. Centiles are reconstructed as
+`mean(age) + Phi_inverse(q) × SD(age)`. This is an explicit Normal approximation
+to published summaries—not a refit of participant data and not centiles
+published by the authors. Construction, source verification, corrections, and
+label mappings are documented in [`references/README.md`](references/README.md).
 
-Smoothing options:
+Optional smoothing:
 
 ```bash
 fbg build-reference --method quadratic --output outputs/ren_quadratic.csv
@@ -115,14 +185,15 @@ fbg build-reference --method cubic     --output outputs/ren_cubic.csv
 fbg build-reference --method auto      --output outputs/ren_auto.csv
 ```
 
-`auto` uses leave-one-week-out error for mean and log(SD), preferring quadratic
-unless cubic improves the combined normalized score by more than 5%. The JSON
-beside each CSV records the selected degree, coefficients, and validation error.
+`auto` compares quadratic and cubic fits of mean and log(SD) by
+leave-one-week-out error and prefers quadratic unless cubic improves the
+combined normalized score by more than 5%. The JSON beside each CSV records the
+selected degree, coefficients, and validation error.
 
-## Reference option B: fit the same segmentation pipeline
+## Reference B: fit the same segmentation pipeline
 
 For individual FetalSynthSeg tissue trajectories, this is usually the better
-method: process a reviewed normal control cohort using the same frozen model,
+method: process a reviewed normal control cohort with the same frozen model,
 SVR pipeline, acquisition profile, and QC protocol, then directly fit quantiles.
 
 ```bash
@@ -141,57 +212,47 @@ fbg chart \
 
 The default is cubic B-spline quantile regression in log-volume space.
 `--method quadratic` and `--method cubic` directly fit those polynomial bases
-when a model is pre-specified. Independent fitted quantiles are pointwise
-ordered if they cross, and this count is recorded in metadata. Use one scan per
-fetus; repeated observations need a longitudinal/mixed-effects model.
+when pre-specified. Independent fitted quantiles are pointwise ordered if they
+cross, and the count is recorded in metadata. Use one scan per fetus; repeated
+observations need a longitudinal or mixed-effects model.
 
-## Reference option C: published polynomial coefficients
+## Reference C: published polynomial coefficients
 
 ```bash
 fbg published --output outputs/published_tbv_models.png
 ```
 
-![Published coefficient-only models](docs/images/published_polynomial_models.png)
+![Published coefficient-only mean models](docs/images/published_polynomial_models.png)
 
-Included equations are:
+Included mean equations are:
 
 - Jarvis et al. 2016: `TBV = 89.69 − 13.33 GA + 0.53 GA²` (18–36 weeks);
 - Ren et al. 2022: `TBV = 47.41 − 9.57 GA + 0.45 GA²` (19–37 weeks).
 
-These are predicted **means only**. Coefficients alone do not define P3/P10/etc.,
-so the software never adds invented bands. The prospective BMJ/ADC Fetal &
-Neonatal study can be added when an authorized full coefficient/table source is
-available; values are not reverse-engineered from a figure.
+Coefficients alone do not define P3/P10/etc., so the software never invents
+bands around these means. The prospective Bouachba et al. ADC Fetal & Neonatal
+study can be added when an authorized coefficient/reference table is available;
+this project does not reverse-engineer values from a published figure.
 
 ## Notebook
 
-Open the executed [`notebooks/Radiology_Meeting_Demo.ipynb`](notebooks/Radiology_Meeting_Demo.ipynb)
-or the standalone [`docs/Radiology_Meeting_Demo.html`](docs/Radiology_Meeting_Demo.html).
-It generates a synthetic RAS phantom, displays the standard-orientation outline
-panel, measures tissue/aggregate volumes, plots multiple centiles, and explains
-the reference choices. Replace its paths only with locally approved images;
-do not commit meeting outputs containing patient data.
-
-## Outputs for radiology review
-
-- Use `.png` for slides (default 300 dpi), `.svg` for editable vector charts,
-  and `.pdf` for print/vector archiving.
-- Contours preserve T2 anatomy better than opaque label fills; `--fill-alpha`
-  adds a subtle fill when desired.
-- Flagged points are red, within-interval points green, and definition-mismatch
-  comparisons amber.
-- Only TBV, ICV, external CSF, and cerebellum are automatically status-flagged
-  against Ren because their definitions are reasonably aligned. Other regions
-  remain visible but are marked comparison-only.
+Open the executed
+[`notebooks/Radiology_Meeting_Demo.ipynb`](notebooks/Radiology_Meeting_Demo.ipynb)
+or standalone [`docs/Radiology_Meeting_Demo.html`](docs/Radiology_Meeting_Demo.html).
+It runs FetalSynthSeg on the real 30-week image, checks it against the manual
+labels, measures tissue and aggregate volumes, plots seven quantiles, and makes
+the one-slide radiology case report. Run
+`python scripts/build_demo_notebook.py` to reconstruct the notebook source.
 
 ## Intended use
 
 This is research software, not a medical device. “Outside P3–P97” is a
-reference flag, not an abnormality diagnosis. Gestational-age uncertainty,
-population sampling, MRI acquisition, SVR reconstruction, model/domain shift,
-segmentation error, and label-definition mismatch all affect interpretation.
-Every case requires expert visual QC and fetal neuroradiology review; any
-clinical use requires local governance and independent validation.
+reference flag, not an abnormality diagnosis; a within-range volume does not
+exclude abnormal morphology. Gestational-age uncertainty, population sampling,
+MRI acquisition, SVR reconstruction, model/domain shift, segmentation error,
+and label-definition mismatch all affect interpretation. Every case requires
+expert visual QC and fetal neuroradiology review. Any clinical use requires
+local governance and independent validation.
 
 ## References
 
@@ -201,6 +262,9 @@ clinical use requires local governance and independent validation.
   [doi:10.1002/pd.4961](https://doi.org/10.1002/pd.4961)
 - Zalevskyi V et al. *MICCAI.* 2024; LNCS 15001:437–447 (FetalSynthSeg).
   [doi:10.1007/978-3-031-72378-0_41](https://doi.org/10.1007/978-3-031-72378-0_41)
+- Gholipour A et al. *IMAGINE Fetal T2-weighted MRI Atlas.* Harvard Dataverse,
+  V1, 2023. [doi:10.7910/DVN/WE9JVR](https://doi.org/10.7910/DVN/WE9JVR)
 
 Code in this repository is MIT licensed. The upstream FetalSynthSeg source and
-checkpoint remain governed by their own license.
+checkpoint remain governed by their own license; FeTA data retain their dataset
+terms.

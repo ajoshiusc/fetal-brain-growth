@@ -1,4 +1,4 @@
-"""Deterministic synthetic fetal-brain phantom for documentation and tests."""
+"""Deterministic fetal-label phantom used only by automated tests."""
 
 from __future__ import annotations
 

@@ -88,8 +88,11 @@ def save_growth_chart(
             continue
         _draw_quantiles(ax, curve, quantiles)
         if observations is not None:
-            points = observations.loc[observations["region"] == region]
-            for point in points.itertuples(index=False):
+            points = observations.loc[observations["region"] == region].sort_values(
+                ["gestational_age_weeks", "volume_ml"]
+            )
+            multiple_points = len(points) > 1
+            for point_index, point in enumerate(points.itertuples(index=False)):
                 status = getattr(point, "status", "within_reference_interval")
                 ax.scatter(
                     float(point.gestational_age_weeks),
@@ -101,13 +104,33 @@ def save_growth_chart(
                     zorder=6,
                 )
                 if hasattr(point, "subject_id"):
+                    if multiple_points:
+                        amplitude = 6 + 5 * (point_index // 2)
+                        y_offset = amplitude if point_index % 2 == 0 else -amplitude
+                        x_offset = -4 if point_index >= len(points) - 2 else 4
+                        horizontal_alignment = "right" if x_offset < 0 else "left"
+                    else:
+                        x_offset, y_offset, horizontal_alignment = 4, 4, "left"
                     ax.annotate(
                         str(point.subject_id),
                         (float(point.gestational_age_weeks), float(point.volume_ml)),
-                        xytext=(4, 4),
+                        xytext=(x_offset, y_offset),
                         textcoords="offset points",
                         fontsize=7,
                         color=INK,
+                        ha=horizontal_alignment,
+                        va="bottom" if y_offset >= 0 else "top",
+                        bbox={
+                            "boxstyle": "round,pad=0.12",
+                            "facecolor": "white",
+                            "edgecolor": "none",
+                            "alpha": 0.70,
+                        },
+                        arrowprops=(
+                            {"arrowstyle": "-", "color": "#8793A6", "linewidth": 0.5}
+                            if multiple_points
+                            else None
+                        ),
                     )
         ax.set_title(REGION_TITLES.get(region, region.replace("_", " ").title()), loc="left", weight="bold")
         ax.set_xlabel("Gestational age (weeks)")

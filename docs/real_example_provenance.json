@@ -1,0 +1,56 @@
+{
+  "example": "sub-sta30, 30-week neurotypical fetal T2 atlas image",
+  "image_source": "IMAGINE Fetal T2-weighted MRI Atlas",
+  "source_doi": "10.7910/DVN/WE9JVR",
+  "source_license": "CC0 1.0",
+  "segmentation": "FetalSynthSeg v1 KISPI-all_fss.ckpt prediction",
+  "fetalsynthseg_commit": "03c439edef02fc830e31a38169c5aa09ca98eeb4",
+  "mean_tissue_dice": 0.83647370491651,
+  "minimum_tissue_dice": 0.6847384797747814,
+  "maximum_tissue_dice": 0.9252031225107535,
+  "segmentation_qc": {
+    "foreground_voxels": 2229497,
+    "connected_components": 18,
+    "largest_component_fraction": 0.9999869925817348,
+    "touches_image_boundary": false,
+    "missing_labels": [],
+    "warnings": [],
+    "subject_id": "sub-sta30",
+    "shape": [
+      256,
+      256,
+      256
+    ],
+    "voxel_volume_ml": 0.00012500000000000003,
+    "orientation": "RAS"
+  },
+  "growth_reference": {
+    "source": "Ren et al. 2022 Table 1 weekly mean and SD",
+    "doi": "10.3389/fnins.2022.886083",
+    "curve_method": "interpolate",
+    "quantiles": [
+      0.03,
+      0.1,
+      0.25,
+      0.5,
+      0.75,
+      0.9,
+      0.97
+    ],
+    "quantile_model": "Normal approximation: mean(age) + Phi^-1(q) * SD(age)",
+    "grid_step_weeks": 0.05,
+    "nonnegative_floor_count": 0,
+    "diagnostics": {
+      "BM": {},
+      "CBV": {},
+      "GMV": {},
+      "ICV": {},
+      "SBV": {},
+      "TBV": {},
+      "VV": {},
+      "e-CSFV": {}
+    },
+    "warning": "Summary-data reconstruction, not a refit of individual participant data."
+  },
+  "warning": "One-case execution check and research comparison; not diagnostic validation."
+}

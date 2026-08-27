@@ -124,6 +124,15 @@ def command_segment(args: argparse.Namespace) -> None:
     print(json.dumps(metadata, indent=2))
 
 
+def command_feta_gallery(args: argparse.Namespace) -> None:
+    from .feta_gallery import build_feta_gallery
+
+    case_ids = args.case_ids.split(",") if args.case_ids else None
+    kwargs = {"case_ids": case_ids} if case_ids else {}
+    paths = build_feta_gallery(args.feta_root, args.output_dir, **kwargs)
+    print(json.dumps({key: str(value) for key, value in paths.items()}, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fbg", description="Fetal MRI segmentation and growth-chart research tools")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -193,6 +202,12 @@ def build_parser() -> argparse.ArgumentParser:
     segment.add_argument("--metadata")
     segment.add_argument("--skip-checksum", action="store_true")
     segment.set_defaults(func=command_segment)
+
+    gallery = subparsers.add_parser("feta-gallery", help="Build a local real ten-case FeTA teaching gallery")
+    gallery.add_argument("--feta-root", required=True)
+    gallery.add_argument("--output-dir", required=True)
+    gallery.add_argument("--case-ids", help="Comma-separated list of exactly ten FeTA subject IDs")
+    gallery.set_defaults(func=command_feta_gallery)
     return parser
 
 
