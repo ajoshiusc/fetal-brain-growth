@@ -1,0 +1,2 @@
+subject_id,gestational_age_weeks,image_path,segmentation_path
+case001,30.4,/data/case001_svr.nii.gz,/data/case001_fetalsynthseg.nii.gz

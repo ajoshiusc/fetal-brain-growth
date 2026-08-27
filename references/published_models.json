@@ -1,0 +1,32 @@
+{
+  "jarvis2016_total_brain": {
+    "title": "Jarvis et al. 2016 total brain volume",
+    "region": "total_brain",
+    "measure": "TBV",
+    "age_range_weeks": [18.0, 36.0],
+    "input_variable": "gestational age in completed weeks",
+    "output_units": "mL",
+    "output_transform": "identity",
+    "age_center": 0.0,
+    "coefficients_ascending": [89.69, -13.33, 0.53],
+    "r_squared_adjusted": 0.974,
+    "doi": "10.1002/pd.4961",
+    "citation": "Jarvis D et al. Quantification of total fetal brain volume using 3D MR imaging data acquired in utero. Prenat Diagn. 2016;36:1225-1232.",
+    "note": "Published coefficients are rounded; the paper's weekly prediction table is more numerically precise. Mean curve only: coefficients do not define centiles."
+  },
+  "ren2022_total_brain": {
+    "title": "Ren et al. 2022 total brain volume",
+    "region": "total_brain",
+    "measure": "TBV",
+    "age_range_weeks": [19.0, 37.0],
+    "input_variable": "gestational age in weeks",
+    "output_units": "mL",
+    "output_transform": "identity",
+    "age_center": 0.0,
+    "coefficients_ascending": [47.41, -9.57, 0.45],
+    "r_squared": 0.98,
+    "doi": "10.3389/fnins.2022.886083",
+    "citation": "Ren J-Y et al. Quantification of Intracranial Structures Volume in Fetuses Using 3-D Volumetric MRI. Front Neurosci. 2022;16:886083.",
+    "note": "Mean curve only. Use the weekly table mode for dispersion and multiple centiles."
+  }
+}

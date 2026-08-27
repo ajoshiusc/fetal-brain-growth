@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+build/
+dist/
+
+# FetalSynthSeg is fetched separately under its own non-commercial license.
+models/
+third_party/
+
+# Never publish clinical or controlled-access datasets.
+/data/
+private_data/
+clinical_data/
+outputs/
+meeting_outputs/
+demo_outputs/
+*.dcm
+*.ckpt
