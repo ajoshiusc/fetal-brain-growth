@@ -23,7 +23,9 @@ manual labels. See [real-example provenance](docs/REAL_EXAMPLE.md) and the
 
 - a checksum-verified inference wrapper for the official FetalSynthSeg v1
   checkpoint;
-- seven FeTA tissue volumes plus definition-aware literature aggregates;
+- seven native FeTA tissue volumes plus total brain and intracranial volume;
+- a default nine-measure reference fitted only to QC-passing FeTA 2.2 cases
+  explicitly labeled `Neurotypical`;
 - P3/P10/P25/P50/P75/P90/P97 charts reconstructed from published weekly
   summary values;
 - interpolated, quadratic, cubic, and cross-validated automatic table fitting;
@@ -132,26 +134,88 @@ fbg measure --manifest examples/manifest.csv --output-dir outputs/cohort
 NIfTI voxel volume is `abs(det(affine[0:3,0:3])) / 1000` mL; it is never
 inferred from array dimensions or assumed isotropic.
 
+## FeTA and FetalSynthSeg compatibility
+
+They are directly compatible: FetalSynthSeg predicts the native FeTA label
+map, so no relabeling is required.
+
+| Value | FeTA / FetalSynthSeg structure |
+|---:|---|
+| 0 | background |
+| 1 | external CSF |
+| 2 | cortical gray matter |
+| 3 | white matter |
+| 4 | ventricles |
+| 5 | cerebellum |
+| 6 | deep gray matter |
+| 7 | brainstem |
+
+The two aggregate measures are `total_brain = 2 + 3 + 5 + 6 + 7` and
+`intracranial_volume = 1 + ... + 7`. Numeric compatibility does not eliminate
+model error: visually QC every FetalSynthSeg prediction before volumetry.
+
+## Default reference: normal-appearing FeTA 2.2 brains
+
+The exact protocol-matched default uses the locally available FeTA 2.2 expert
+segmentations rather than forcing all seven labels into non-equivalent
+literature definitions:
+
+```bash
+fbg feta-reference \
+  --degree 2 \
+  --output-dir meeting_outputs/feta_reference
+```
+
+The command automatically detects `/deneb_disk/feta_2022/feta_2.2`; elsewhere,
+pass `--feta-root /path/to/feta_2.2` or set `FETA_ROOT`. It performs the
+following transparent construction:
+
+1. retain only rows whose FeTA `Pathology` field is exactly `Neurotypical`;
+2. exclude technical segmentation-QC failures, but perform no volume-based
+   outlier removal;
+3. measure all seven native tissues, total brain, and intracranial volume from
+   the NIfTI affine;
+4. fit `log(volume) = polynomial(GA - mean(GA))` independently per measure;
+5. estimate one residual SD in log-volume space and calculate
+   `Qq(GA) = exp(fitted_log_volume(GA) + Phi_inverse(q) * residual_SD)`.
+
+On the currently mounted release this gives 30 QC-passing controls from 22.7 to
+34.8 weeks: 31 rows are labeled neurotypical and `sub-041` is excluded because
+the segmentation reaches the image boundary. The output contains
+P3/P10/P25/P50/P75/P90/P97, fit coefficients, leave-one-out errors, subject
+IDs, QC records, and source metadata. Quadratic is the conservative default;
+`--degree 3` is an explicit sensitivity option. On these 30 controls, cubic
+leave-one-out log-RMSE was no better for any measure and was up to 8.4% worse,
+supporting the quadratic default. Neither degree should be extrapolated beyond
+the observed age range.
+
+This small, cross-sectional, partially in-sample reference is useful for
+teaching and pipeline development, not a validated clinical norm. A larger
+independent cohort processed with the same frozen pipeline remains preferable.
+
 ## Ten real FeTA cases for a local meeting
 
 If the FeTA 2022 BIDS release is available locally, the following command makes
-a 2×5 MRI/outline overview, four-panel cohort growth chart, ten individual case
-cards, volumes, research screens, and QC metadata:
+a 2×5 MRI/outline overview, a nine-panel cohort growth chart, ten individual
+case cards, volumes, research screens, fitted reference files, and QC metadata:
 
 ```bash
 fbg feta-gallery \
-  --feta-root /path/to/feta_2.2 \
-  --output-dir meeting_outputs/feta_10_cases
+  --output-dir meeting_outputs/feta_10_cases_matched
 ```
 
 The default teaching set is `sub-036, sub-027, sub-034, sub-051, sub-061,
-sub-005, sub-014, sub-001, sub-019, sub-050`. It deliberately includes both
+sub-007, sub-014, sub-001, sub-019, sub-050`. It deliberately includes both
 FeTA phenotype groups. Dataset phenotype and a volume-reference flag are shown
 as separate fields; neither is converted into an automated diagnosis. FeTA raw
 data and derived meeting images remain subject to FeTA access terms and are
 Git-ignored.
 
-## Reference A: Ren 2022 weekly summaries
+Use `--reference ren2022` to reproduce the older four-measure literature
+comparison. The matched FeTA reference is now the default because it produces
+definition-compatible charts for all nine measures.
+
+## Literature alternative: Ren 2022 weekly summaries
 
 Build the conservative interpolated reference:
 
@@ -190,7 +254,7 @@ leave-one-week-out error and prefers quadratic unless cubic improves the
 combined normalized score by more than 5%. The JSON beside each CSV records the
 selected degree, coefficients, and validation error.
 
-## Reference B: fit the same segmentation pipeline
+## Larger local reference: fit the same segmentation pipeline
 
 For individual FetalSynthSeg tissue trajectories, this is usually the better
 method: process a reviewed normal control cohort with the same frozen model,
@@ -216,7 +280,7 @@ when pre-specified. Independent fitted quantiles are pointwise ordered if they
 cross, and the count is recorded in metadata. Use one scan per fetus; repeated
 observations need a longitudinal or mixed-effects model.
 
-## Reference C: published polynomial coefficients
+## Published polynomial coefficients
 
 ```bash
 fbg published --output outputs/published_tbv_models.png
@@ -234,9 +298,36 @@ bands around these means. The prospective Bouachba et al. ADC Fetal & Neonatal
 study can be added when an authorized coefficient/reference table is available;
 this project does not reverse-engineer values from a published figure.
 
+## Other compatible growth-chart resources
+
+[BOUNTI](https://doi.org/10.7554/eLife.88818.1) is the strongest public
+larger-cohort alternative found: its paper reports reviewed segmentations from
+390 healthy controls at 21–38 weeks and P5/P50/P95 growth charts for nine
+structures. The current
+[Multi-BOUNTI reporting repository](https://github.com/SVRTK/perinatal-brain-mri-analysis)
+also exposes polynomial reporting models. It is best used end-to-end with
+BOUNTI/Multi-BOUNTI labels. It is not silently applied to FeTA maps because its
+ontology separates structures that FeTA combines (for example cerebellar
+vermis and ventricular compartments), and its public code is GPL-3.0 rather
+than MIT.
+
+[Kyriakopoulou et al.](https://doi.org/10.1007/s00429-016-1342-6) provide an
+MRI centile resource based on 127 normal fetuses at 21–38 weeks, but its manual
+biometry definitions likewise are not a drop-in seven-label FetalSynthSeg
+reference. The four conservatively matched Ren comparisons therefore remain
+available, while the local FeTA fit is the exact-label default.
+
 ## Notebook
 
-Open the executed
+For the locally mounted FeTA data, open
+[`notebooks/FeTA_10_Case_Meeting.ipynb`](notebooks/FeTA_10_Case_Meeting.ipynb).
+It builds or reuses the 10-case expert-segmentation gallery, displays all nine
+matched charts, lists the research flags, and exposes the fit diagnostics. The
+tracked notebook has no controlled-data outputs; after running it locally, use
+the executed copy under `meeting_outputs/` for the meeting. Rebuild its clean
+source with `python scripts/build_feta_meeting_notebook.py`.
+
+The public, fully executed demonstration is
 [`notebooks/Radiology_Meeting_Demo.ipynb`](notebooks/Radiology_Meeting_Demo.ipynb)
 or standalone [`docs/Radiology_Meeting_Demo.html`](docs/Radiology_Meeting_Demo.html).
 It runs FetalSynthSeg on the real 30-week image, checks it against the manual
@@ -262,6 +353,10 @@ local governance and independent validation.
   [doi:10.1002/pd.4961](https://doi.org/10.1002/pd.4961)
 - Zalevskyi V et al. *MICCAI.* 2024; LNCS 15001:437–447 (FetalSynthSeg).
   [doi:10.1007/978-3-031-72378-0_41](https://doi.org/10.1007/978-3-031-72378-0_41)
+- Payette K et al. *Sci Data.* 2021;8:167 (FeTA).
+  [doi:10.1038/s41597-021-00946-3](https://doi.org/10.1038/s41597-021-00946-3)
+- Uus A et al. *eLife reviewed preprint.* 2023;12:RP88818 (BOUNTI).
+  [doi:10.7554/eLife.88818.1](https://doi.org/10.7554/eLife.88818.1)
 - Gholipour A et al. *IMAGINE Fetal T2-weighted MRI Atlas.* Harvard Dataverse,
   V1, 2023. [doi:10.7910/DVN/WE9JVR](https://doi.org/10.7910/DVN/WE9JVR)
 

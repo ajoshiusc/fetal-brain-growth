@@ -12,7 +12,14 @@ import pandas as pd
 
 from .case_report import save_case_report
 from .charts import save_growth_chart
-from .labels import FETA_LABELS, LABEL_COLORS
+from .feta_reference import (
+    build_feta_matched_reference,
+    find_feta_case_files,
+    load_feta_participants,
+    resolve_feta_root,
+    save_feta_matched_reference,
+)
+from .labels import FETA_LABELS, FETA_MATCHED_REFERENCE_REGIONS, LABEL_COLORS
 from .radiology import _best_slice, _crop_bounds, _display_slice, load_aligned_canonical
 from .references import build_table_curves, score_against_curves
 from .volumetry import measure_segmentation
@@ -20,26 +27,25 @@ from .volumetry import measure_segmentation
 
 DEFAULT_CASE_IDS = (
     "sub-036", "sub-027", "sub-034", "sub-051", "sub-061",
-    "sub-005", "sub-014", "sub-001", "sub-019", "sub-050",
+    "sub-007", "sub-014", "sub-001", "sub-019", "sub-050",
 )
-SCOREABLE_REGIONS = ("total_brain", "intracranial_volume", "external_csf", "cerebellum")
+REN_SCOREABLE_REGIONS = ("total_brain", "intracranial_volume", "external_csf", "cerebellum")
 PHENOTYPE_COLORS = {"Neurotypical": "#1976A3", "Pathological": "#7B3F91"}
 
 
-def _find_case_files(root: Path, subject_id: str) -> tuple[Path, Path]:
-    directory = root / subject_id / "anat"
-    images = sorted(directory.glob("*_T2w.nii.gz"))
-    labels = sorted(directory.glob("*_dseg.nii.gz"))
-    if len(images) != 1 or len(labels) != 1:
-        raise FileNotFoundError(f"Expected one T2w and one dseg for {subject_id} in {directory}.")
-    return images[0], labels[0]
-
-
-def _case_status(scores: pd.DataFrame) -> tuple[str, str]:
-    scores = scores.loc[scores.region.isin(SCOREABLE_REGIONS)]
+def _case_status(
+    scores: pd.DataFrame,
+    score_regions: tuple[str, ...],
+    *,
+    interval_description: str,
+) -> tuple[str, str]:
+    scores = scores.loc[scores.region.isin(score_regions)]
     flagged = scores.loc[scores.status.isin({"low_reference_flag", "high_reference_flag"})]
     if flagged.empty:
-        return "within_all_4_reference_intervals", "Within all four definition-aligned intervals"
+        return (
+            f"within_all_{len(score_regions)}_reference_intervals",
+            f"Within all {len(score_regions)} {interval_description} reference intervals",
+        )
     details = []
     for row in flagged.itertuples(index=False):
         direction = "low" if row.status == "low_reference_flag" else "high"
@@ -64,9 +70,14 @@ def _save_overview(records: list[dict[str, object]], output_path: Path, *, dpi: 
             if label and mask.any():
                 ax.contour(mask.astype(float), levels=[0.5], colors=[LABEL_COLORS[label]], linewidths=0.85, origin="lower")
         flagged = record["volume_screen"] == "one_or_more_reference_flags"
+        screen_text = (
+            "reference flag(s)"
+            if flagged
+            else f"within {record['reference_interval_count']} intervals"
+        )
         ax.set_title(
             f"{record['subject_id']} • {record['gestational_age_weeks']:.1f} w\n"
-            f"{record['feta_phenotype']} • {'reference flag(s)' if flagged else 'within 4 intervals'}",
+            f"{record['feta_phenotype']} • {screen_text}",
             fontsize=9.5,
             color=PHENOTYPE_COLORS.get(str(record["feta_phenotype"]), "#17233C"),
             weight="bold",
@@ -92,10 +103,12 @@ def _save_overview(records: list[dict[str, object]], output_path: Path, *, dpi: 
 
 
 def build_feta_gallery(
-    feta_root: str | Path,
+    feta_root: str | Path | None,
     output_dir: str | Path,
     *,
     case_ids: Iterable[str] = DEFAULT_CASE_IDS,
+    reference: str = "feta-neurotypical",
+    feta_degree: int = 2,
 ) -> dict[str, Path]:
     """Create local teaching figures from FeTA expert annotations.
 
@@ -103,17 +116,36 @@ def build_feta_gallery(
     research/education terms and should not be committed automatically.
     """
 
-    feta_root = Path(feta_root).resolve()
+    feta_root = resolve_feta_root(feta_root)
     output_dir = Path(output_dir).resolve()
     case_ids = tuple(case_ids)
     if len(case_ids) != 10 or len(set(case_ids)) != 10:
         raise ValueError("Provide exactly ten unique case IDs.")
-    participants = pd.read_csv(feta_root / "participants.tsv", sep="\t")
-    required = {"participant_id", "Pathology", "Gestational age"}
-    if missing := required - set(participants.columns):
-        raise ValueError(f"participants.tsv is missing {sorted(missing)}.")
-    curves, metadata = build_table_curves(method="interpolate")
+    participants = load_feta_participants(feta_root)
     output_dir.mkdir(parents=True, exist_ok=True)
+    if reference == "feta-neurotypical":
+        curves, metadata, control_tissues, control_matched, control_qc = build_feta_matched_reference(
+            feta_root,
+            degree=feta_degree,
+        )
+        save_feta_matched_reference(
+            output_dir,
+            curves,
+            metadata,
+            control_tissues,
+            control_matched,
+            control_qc,
+        )
+        score_regions = tuple(FETA_MATCHED_REFERENCE_REGIONS)
+        definition_guard = False
+        interval_description = "protocol-matched"
+    elif reference == "ren2022":
+        curves, metadata = build_table_curves(method="interpolate")
+        score_regions = REN_SCOREABLE_REGIONS
+        definition_guard = True
+        interval_description = "definition-aligned"
+    else:
+        raise ValueError("reference must be feta-neurotypical or ren2022.")
     cards = output_dir / "case_cards"
     cards.mkdir(exist_ok=True)
     tissues, aggregates, qc_records, records = [], [], [], []
@@ -124,7 +156,7 @@ def build_feta_gallery(
             raise ValueError(f"Could not uniquely identify {subject_id}.")
         age = float(row["Gestational age"].iloc[0])
         phenotype = str(row.Pathology.iloc[0])
-        image_path, segmentation_path = _find_case_files(feta_root, subject_id)
+        image_path, segmentation_path = find_feta_case_files(feta_root, subject_id)
         tissue, aggregate, qc = measure_segmentation(
             segmentation_path,
             subject_id=subject_id,
@@ -146,12 +178,35 @@ def build_feta_gallery(
 
     tissue_frame = pd.concat(tissues, ignore_index=True)
     aggregate_frame = pd.concat(aggregates, ignore_index=True)
-    scores = score_against_curves(aggregate_frame, curves)
+    if reference == "feta-neurotypical":
+        case_volumes = pd.concat(
+            [
+                aggregate_frame.loc[
+                    aggregate_frame.region.isin(("total_brain", "intracranial_volume"))
+                ],
+                tissue_frame,
+            ],
+            ignore_index=True,
+            sort=False,
+        )
+    else:
+        case_volumes = aggregate_frame
+    scores = score_against_curves(case_volumes, curves, definition_guard=definition_guard)
     summaries = []
     for record in records:
         case_scores = scores.loc[scores.subject_id == record["subject_id"]]
-        screen, detail = _case_status(case_scores)
-        record.update({"volume_screen": screen, "reference_result_detail": detail})
+        screen, detail = _case_status(
+            case_scores,
+            score_regions,
+            interval_description=interval_description,
+        )
+        record.update(
+            {
+                "volume_screen": screen,
+                "reference_result_detail": detail,
+                "reference_interval_count": len(score_regions),
+            }
+        )
         summaries.append(record)
         save_case_report(
             record["image_path"],
@@ -173,21 +228,29 @@ def build_feta_gallery(
         "qc": output_dir / "segmentation_qc.json",
         "overview": output_dir / "ten_case_overview.png",
         "growth_chart": output_dir / "ten_case_growth_chart.png",
+        "curves": output_dir / "reference_curves.csv",
         "metadata": output_dir / "reference_metadata.json",
     }
     summary.to_csv(paths["summary"], index=False)
     tissue_frame.to_csv(paths["tissues"], index=False)
     scores.to_csv(paths["scores"], index=False)
+    curves.to_csv(paths["curves"], index=False)
     paths["qc"].write_text(json.dumps(qc_records, indent=2) + "\n")
     paths["metadata"].write_text(json.dumps(metadata, indent=2) + "\n")
     _save_overview(records, paths["overview"])
     save_growth_chart(
         curves,
         paths["growth_chart"],
-        observations=scores.loc[scores.region.isin(SCOREABLE_REGIONS)],
-        regions=SCOREABLE_REGIONS,
-        title="Ten real FeTA cases on fetal brain volume references",
-        subtitle="Expert FeTA segmentations • selected teaching set • reference flags are not diagnoses",
+        observations=scores.loc[scores.region.isin(score_regions)],
+        regions=score_regions,
+        title="Ten real FeTA cases on protocol-matched volume references",
+        subtitle=(
+            f"{metadata['subjects']} QC-passing neurotypical FeTA controls • "
+            f"degree-{feta_degree} log-volume model • "
+            "small in-sample teaching reference, not a clinical norm"
+            if reference == "feta-neurotypical"
+            else "Ren 2022 literature reference • four definition-aligned screens"
+        ),
         dpi=240,
     )
     return paths

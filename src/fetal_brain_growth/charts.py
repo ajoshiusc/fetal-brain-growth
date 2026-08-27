@@ -78,9 +78,10 @@ def save_growth_chart(
         regions = list(dict.fromkeys(curves["region"].astype(str)))
     else:
         regions = list(regions)
-    columns = 2 if len(regions) > 1 else 1
+    columns = 3 if len(regions) >= 7 else (2 if len(regions) > 1 else 1)
     rows = int(np.ceil(len(regions) / columns))
-    fig, axes = plt.subplots(rows, columns, figsize=(7.0 * columns, 4.6 * rows), squeeze=False)
+    panel_width = 6.2 if columns == 3 else 7.0
+    fig, axes = plt.subplots(rows, columns, figsize=(panel_width * columns, 4.6 * rows), squeeze=False)
     for ax, region in zip(axes.flat, regions):
         curve = curves.loc[curves["region"] == region].sort_values("gestational_age_weeks")
         if curve.empty:

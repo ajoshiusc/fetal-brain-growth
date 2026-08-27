@@ -1,10 +1,59 @@
 # Reference provenance and construction
 
 This directory contains transparent, machine-readable source values—never
-serialized statistical models. The software keeps three different operations
-separate because they answer different questions.
+serialized statistical models. The software keeps distinct reference-building
+operations separate because they answer different questions.
 
-## 1. Ren 2022 weekly summary table
+## 1. FeTA 2.2 protocol-matched teaching reference (default)
+
+FeTA and FetalSynthSeg share the same output ontology: background 0, external
+CSF 1, cortical gray matter 2, white matter 3, ventricles 4, cerebellum 5, deep
+gray matter 6, and brainstem 7. This permits exact-label tissue comparisons and
+two deterministic aggregates:
+
+- total brain = labels 2 + 3 + 5 + 6 + 7;
+- intracranial volume = labels 1 through 7.
+
+Run:
+
+```bash
+fbg feta-reference --degree 2 --output-dir outputs/feta_reference
+```
+
+The builder reads `participants.tsv`, retains only the case-insensitive exact
+label `Pathology == Neurotypical`, measures expert segmentations using the
+NIfTI affine, and excludes only technical segmentation-QC failures. It does not
+remove cases based on their volume. On the current local FeTA 2.2 release, 31
+rows pass the phenotype filter and 30 pass technical QC, spanning 22.7–34.8
+weeks.
+
+For region `r`, centered age `x = GA - mean(GA)`, and degree `d`:
+
+```text
+log(V_r) = beta_r,0 + beta_r,1*x + ... + beta_r,d*x^d + error_r
+Q_r,q(GA) = exp(fitted_log(V_r) + Phi_inverse(q) * residual_SD_r)
+```
+
+The default is degree 2; degree 3 is available only as an explicit sensitivity
+analysis. In the current 30-case fit, cubic leave-one-subject-out log-RMSE was
+no better for any measure and was up to 8.4% worse. One constant residual SD is
+estimated per region in log-volume space.
+This restrained location-scale model is used because 30 controls are
+insufficient for stable direct extreme-quantile regression. Outputs record the
+coefficients, residual SD, log-scale R², leave-one-subject-out RMSE, included
+subject IDs, QC exclusions, and P3/P10/P25/P50/P75/P90/P97 curves.
+
+The age grid stops at the youngest and oldest included controls. These are
+small, cross-sectional, in-sample teaching references—not clinical norms. FeTA
+data and locally derived tables remain subject to FeTA research/education terms
+and are excluded from Git.
+
+Source: Payette K et al. *An automatic multi-tissue human fetal brain
+segmentation benchmark using the Fetal Tissue Annotation Dataset.* Scientific
+Data. 2021;8:167.
+[doi:10.1038/s41597-021-00946-3](https://doi.org/10.1038/s41597-021-00946-3)
+
+## 2. Ren 2022 weekly summary table
 
 [`ren2022_weekly_mean_sd.csv`](ren2022_weekly_mean_sd.csv) is a manual,
 double-checked transcription of the weekly **mean and standard deviation** in
@@ -45,7 +94,7 @@ The repository includes a reproducible source check. After downloading the
 official article HTML, run `python scripts/verify_ren_reference.py --html
 article.html`; all 152 measure/week mean and SD pairs must match exactly.
 
-## 2. Published polynomial coefficients
+## 3. Published polynomial coefficients
 
 [`published_models.json`](published_models.json) stores coefficients in
 ascending order (`intercept`, `GA`, `GA²`, ...). These models draw a predicted
@@ -69,7 +118,7 @@ age association, but the full coefficient/reference table is not openly
 available under reusable terms. This repository does not infer values from its
 figure; an authorized table can be supplied later as a separately named model.
 
-## 3. Preferred FetalSynthSeg-matched reference
+## 4. Preferred large FetalSynthSeg-matched reference
 
 For tissue-level charts, fit direct quantiles to a reviewed local control
 cohort processed with the same frozen FetalSynthSeg checkpoint:
@@ -86,6 +135,35 @@ cubic B-spline quantile regression. `--method quadratic` and `--method cubic`
 are available for a pre-specified polynomial analysis. The default minimum of
 120 independent fetuses is a software guardrail, not a sample-size calculation.
 Use one scan per fetus or an explicitly longitudinal model.
+
+## 5. Other public MRI references evaluated
+
+BOUNTI is the most useful larger public alternative located. It used reviewed,
+manually corrected segmentations from 390 healthy controls across three
+acquisition protocols and 21–38 weeks to produce P5/P50/P95 charts for nine
+structures. Its 19-region parcellation is not identical to FeTA: cerebellar
+vermis and several ventricular compartments are separated, among other
+differences. The current GPL-3.0
+[Multi-BOUNTI reporting code](https://github.com/SVRTK/perinatal-brain-mri-analysis)
+contains polynomial reporting models. They should be used with the matching
+BOUNTI pipeline, not copied into this MIT project and silently applied to FeTA
+labels.
+
+Uus AU et al. *BOUNTI: Brain vOlumetry and aUtomated parcellatioN for 3D feTal
+MRI.* eLife reviewed preprint. 2023;12:RP88818.
+[doi:10.7554/eLife.88818.1](https://doi.org/10.7554/eLife.88818.1)
+
+Kyriakopoulou et al. published P5/P50/P95 MRI biometry from 127 normal fetuses
+at 21–38 weeks and an online calculator. Its manual supratentorial, cortical,
+ventricular, cerebellar, and extra-cerebral CSF definitions are informative but
+not a drop-in FeTA/FetalSynthSeg seven-tissue reference.
+[doi:10.1007/s00429-016-1342-6](https://doi.org/10.1007/s00429-016-1342-6)
+
+Andescavage et al. reported MRI quantile-regression charts from 166 healthy
+fetuses, but the accessible article presents several tissue trajectories as
+figures rather than a reusable complete FeTA-compatible coefficient table. The
+project does not digitize figures to manufacture precise reference curves.
+[doi:10.1093/cercor/bhw306](https://doi.org/10.1093/cercor/bhw306)
 
 ## Label mapping and interpretation
 

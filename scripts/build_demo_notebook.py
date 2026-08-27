@@ -115,7 +115,7 @@ def main() -> None:
             "- A single scan is a cross-sectional position, not that fetus's longitudinal growth trajectory.\n"
             "- A reference flag is not an abnormality diagnosis, and within-range volume does not exclude abnormal morphology.\n"
             "- `interpolate` preserves published weekly means; `quadratic`, `cubic`, and leave-one-week-out `auto` are available.\n"
-            "- For all seven tissues, prefer a sufficiently large reviewed control cohort processed with the same frozen FetalSynthSeg model and direct quantile regression.\n"
+            "- For all seven tissues, use the exact-label FeTA neurotypical teaching reference locally; prefer a larger reviewed cohort processed with the same frozen FetalSynthSeg model for validation.\n"
             "- Review the complete 3-D MRI/segmentation and clinical context with a fetal neuroradiologist."
         ),
     ]

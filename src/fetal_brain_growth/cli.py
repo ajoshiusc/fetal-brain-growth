@@ -129,7 +129,32 @@ def command_feta_gallery(args: argparse.Namespace) -> None:
 
     case_ids = args.case_ids.split(",") if args.case_ids else None
     kwargs = {"case_ids": case_ids} if case_ids else {}
-    paths = build_feta_gallery(args.feta_root, args.output_dir, **kwargs)
+    paths = build_feta_gallery(
+        args.feta_root,
+        args.output_dir,
+        reference=args.reference,
+        feta_degree=args.feta_degree,
+        **kwargs,
+    )
+    print(json.dumps({key: str(value) for key, value in paths.items()}, indent=2))
+
+
+def command_feta_reference(args: argparse.Namespace) -> None:
+    from .feta_reference import build_feta_matched_reference, save_feta_matched_reference
+
+    curves, metadata, tissues, matched, qc_records = build_feta_matched_reference(
+        args.feta_root,
+        degree=args.degree,
+        quantiles=parse_quantiles(args.quantiles),
+    )
+    paths = save_feta_matched_reference(
+        args.output_dir,
+        curves,
+        metadata,
+        tissues,
+        matched,
+        qc_records,
+    )
     print(json.dumps({key: str(value) for key, value in paths.items()}, indent=2))
 
 
@@ -203,10 +228,33 @@ def build_parser() -> argparse.ArgumentParser:
     segment.add_argument("--skip-checksum", action="store_true")
     segment.set_defaults(func=command_segment)
 
+    feta_reference = subparsers.add_parser(
+        "feta-reference",
+        help="Fit all-region curves to FeTA cases labeled Neurotypical",
+    )
+    feta_reference.add_argument(
+        "--feta-root",
+        help="FeTA 2.2 BIDS root; defaults to FETA_ROOT or the detected local dataset",
+    )
+    feta_reference.add_argument("--degree", choices=(2, 3), type=int, default=2)
+    feta_reference.add_argument("--quantiles", default="0.03,0.10,0.25,0.50,0.75,0.90,0.97")
+    feta_reference.add_argument("--output-dir", required=True)
+    feta_reference.set_defaults(func=command_feta_reference)
+
     gallery = subparsers.add_parser("feta-gallery", help="Build a local real ten-case FeTA teaching gallery")
-    gallery.add_argument("--feta-root", required=True)
+    gallery.add_argument(
+        "--feta-root",
+        help="FeTA 2.2 BIDS root; defaults to FETA_ROOT or the detected local dataset",
+    )
     gallery.add_argument("--output-dir", required=True)
     gallery.add_argument("--case-ids", help="Comma-separated list of exactly ten FeTA subject IDs")
+    gallery.add_argument(
+        "--reference",
+        choices=("feta-neurotypical", "ren2022"),
+        default="feta-neurotypical",
+        help="Default uses all FeTA cases labeled Neurotypical; Ren is the literature alternative",
+    )
+    gallery.add_argument("--feta-degree", choices=(2, 3), type=int, default=2)
     gallery.set_defaults(func=command_feta_gallery)
     return parser
 

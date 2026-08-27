@@ -18,6 +18,16 @@ FETA_LABELS: OrderedDict[int, str] = OrderedDict(
     ]
 )
 
+FETA_TISSUE_REGIONS = tuple(name for label, name in FETA_LABELS.items() if label)
+
+# Directly available from a FeTA/FetalSynthSeg label map. Total brain and ICV
+# are deterministic aggregates; the remaining seven entries are native labels.
+FETA_MATCHED_REFERENCE_REGIONS = (
+    "total_brain",
+    "intracranial_volume",
+    *FETA_TISSUE_REGIONS,
+)
+
 LABEL_TITLES = {
     1: "External CSF",
     2: "Cortical gray matter",
