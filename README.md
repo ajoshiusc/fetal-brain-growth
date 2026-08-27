@@ -184,6 +184,12 @@ following transparent construction:
 5. estimate one residual SD in log-volume space and calculate
    `Qq(GA) = exp(fitted_log_volume(GA) + Phi_inverse(q) * residual_SD)`.
 
+Here P50 is the fitted median. P3–P97 are estimated population intervals under
+a constant log-Normal residual assumption; they are not confidence intervals
+for the fitted median. Case positions are interpolated between the seven fitted
+quantiles and bounded to P3–P97. Thus “P97 bounded” means P97 or higher, not an
+exact tail probability.
+
 On the currently mounted release this gives 30 QC-passing controls from 22.7 to
 34.8 weeks: 31 rows are labeled neurotypical and `sub-041` is excluded because
 the segmentation reaches the image boundary. The output contains
@@ -217,6 +223,14 @@ as separate fields; neither is converted into an automated diagnosis. FeTA raw
 data and derived meeting images remain subject to FeTA access terms and are
 Git-ignored.
 
+The local FeTA meeting notebook displays **both** quantile constructions for
+the same ten measured cases: nine protocol-matched FeTA log-volume panels and
+eight Ren weekly-mean/SD Normal-approximation panels. In the Ren chart, only
+the four definition-aligned screens are green/red; definition-mismatched
+measurements are orange and comparison-only. This side-by-side presentation
+demonstrates reference sensitivity and must not be interpreted as longitudinal
+change within a fetus.
+
 Use `--reference ren2022` to reproduce the older four-measure literature
 comparison. The matched FeTA reference is now the default because it produces
 definition-compatible charts for all nine measures in both cohort and
@@ -247,6 +261,26 @@ mean and SD values. Centiles are reconstructed as
 to published summaries—not a refit of participant data and not centiles
 published by the authors. Construction, source verification, corrections, and
 label mappings are documented in [`references/README.md`](references/README.md).
+
+The public demo displays P3/P10/P25/P50/P75/P90/P97. With `interpolate`, mean
+and SD are separately interpolated to a 0.05-week grid, so the original values
+are retained at completed weeks. For example, Ren total-brain mean = 175.60 mL
+and SD = 6.09 mL at 30 weeks, producing the following Normal-approximation
+reference values:
+
+| Quantile | P3 | P10 | P25 | P50 | P75 | P90 | P97 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Total brain at 30 weeks (mL) | 164.1 | 167.8 | 171.5 | 175.6 | 179.7 | 183.4 | 187.1 |
+
+For a case, the expected quantiles are interpolated at its exact gestational
+age, and its displayed percentile is interpolated between adjacent quantile
+values and bounded to P3–P97. Measurements below P3 or above P97 receive a
+research flag only when label definitions are compatible. Total brain,
+intracranial volume, external CSF, and cerebellum pass that guard; cortical gray
+matter, white-plus-deep-gray, ventricles, and brainstem remain comparison-only.
+These bands are estimated population reference intervals, not confidence
+intervals around a mean. The current demo uses Ren 2022; the BMJ Fetal &
+Neonatal paper is not the active reference source.
 
 Optional smoothing:
 

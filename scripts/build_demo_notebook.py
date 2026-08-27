@@ -94,9 +94,21 @@ def main() -> None:
         ),
         nbf.v4.new_markdown_cell(
             "## 4. Position the real case on multiple quantiles\n\n"
-            "P3/P10/P25/P50/P75/P90/P97 are reconstructed from Ren 2022 weekly mean/SD under an explicit "
-            "Normal approximation. All eight reported volume measures are shown; only total brain, "
-            "intracranial volume, external CSF, and cerebellum are definition-aligned enough for automated research flags."
+            "### Ren 2022 summary-data reconstruction\n\n"
+            "These bands are **reconstructed centiles**, not quantiles directly fitted from the individual "
+            "participants in this notebook and not confidence intervals around the mean. For each of the eight "
+            "Ren measures, the repository contains the paper's weekly mean `μ(t)` and SD `σ(t)`. For quantile "
+            "`q`, the curve is\n\n"
+            "`Q_q(t) = max(0, μ(t) + Φ⁻¹(q) × σ(t))`.\n\n"
+            "The displayed values are P3/P10/P25/P50/P75/P90/P97. The default `interpolate` method linearly "
+            "interpolates mean and SD between completed weeks on a 0.05-week grid, preserving the published "
+            "integer-week values. At 30 weeks, for example, Ren total-brain mean = 175.60 mL and SD = 6.09 mL, "
+            "giving approximately P3 = 164.1, P10 = 167.8, P25 = 171.5, P50 = 175.6, P75 = 179.7, "
+            "P90 = 183.4, and P97 = 187.1 mL.\n\n"
+            "With `quadratic` or `cubic`, mean is fitted in volume space and log(SD) is fitted polynomially so "
+            "SD stays positive. `auto` uses leave-one-week-out error and selects cubic only when its combined "
+            "normalized score improves by more than 5%. Published mean-curve coefficients alone do not define "
+            "centiles. The current public demo uses Ren 2022, not the BMJ Fetal & Neonatal paper."
         ),
         nbf.v4.new_code_cell(
             "curves, curve_metadata = build_table_curves(method='interpolate')\n"
@@ -107,6 +119,15 @@ def main() -> None:
             "subtitle='30-week IMAGINE atlas • green = definition-aligned screen; orange = comparison only')\n"
             "display(Image(filename=str(chart), width=1200))\n"
             "display(scores[['region','volume_ml','estimated_percentile_bounded','status','interpretation_note']])"
+        ),
+        nbf.v4.new_markdown_cell(
+            "### Case position and reference flags\n\n"
+            "At the fetus's exact gestational age, each expected quantile is interpolated from the curve. The "
+            "reported percentile is then linearly interpolated between the seven quantile values and is **bounded "
+            "to P3–P97**: `P3 bounded` means P3 or lower and `P97 bounded` means P97 or higher, not an exact tail "
+            "probability. A research flag is produced below P3 or above P97. All eight measures are plotted, but "
+            "only total brain, intracranial volume, external CSF, and cerebellum are definition-aligned enough for "
+            "automated Ren flags; the four orange points are comparison-only because anatomical definitions differ."
         ),
         nbf.v4.new_markdown_cell("## 5. Multi-panel radiology case report"),
         nbf.v4.new_code_cell(
