@@ -26,22 +26,25 @@ def main() -> None:
             "from IPython.display import Image, display\n"
             "from fetal_brain_growth.case_report import save_case_report\n"
             "from fetal_brain_growth.charts import save_growth_chart\n"
+            "from fetal_brain_growth.labels import REFERENCE_GROUPS\n"
             "from fetal_brain_growth.radiology import save_radiology_figure\n"
             "from fetal_brain_growth.references import build_table_curves, score_against_curves\n"
             "from fetal_brain_growth.validation import tissue_dice\n"
-            "from fetal_brain_growth.volumetry import measure_segmentation\n"
-            "from fetal_brain_growth.segmentation import segment_image"
+            "from fetal_brain_growth.volumetry import measure_segmentation"
         ),
         nbf.v4.new_code_cell(
-            "ROOT = Path.cwd().resolve()\n"
-            "if ROOT.name == 'notebooks': ROOT = ROOT.parent\n"
+            "START = Path.cwd().resolve()\n"
+            "ROOT = next((p for p in (START, *START.parents) if (p/'pyproject.toml').exists() and (p/'notebooks').is_dir()), None)\n"
+            "if ROOT is None:\n"
+            "    raise RuntimeError('Could not locate the fetal-brain-growth repository. Start Jupyter from the repository or its notebooks directory.')\n"
             "EXAMPLE = ROOT/'third_party/FetalSynthSeg/data/sub-sta30/anat'\n"
             "IMAGE_PATH = EXAMPLE/'sub-sta30_rec-irtk_T2w.nii.gz'\n"
             "MANUAL_PATH = EXAMPLE/'sub-sta30_rec-irtk_T2w_dseg.nii.gz'\n"
             "CHECKPOINT = ROOT/'models/KISPI-all_fss.ckpt'\n"
             "OUT = ROOT/'demo_outputs/real_example'; OUT.mkdir(parents=True, exist_ok=True)\n"
             "PREDICTED_PATH = OUT/'sub-sta30_fetalsynthseg.nii.gz'\n"
-            "missing = [p for p in (IMAGE_PATH, MANUAL_PATH, CHECKPOINT) if not p.exists()]\n"
+            "required = [IMAGE_PATH, MANUAL_PATH] + ([] if PREDICTED_PATH.exists() else [CHECKPOINT])\n"
+            "missing = [p for p in required if not p.exists()]\n"
             "if missing:\n"
             "    raise FileNotFoundError('Run ./scripts/install_fetalsynthseg.sh --accept-license first. Missing: ' + ', '.join(map(str, missing)))\n"
             "print('Real example:', IMAGE_PATH.name, '• gestational age 30 weeks')"
@@ -53,6 +56,7 @@ def main() -> None:
         ),
         nbf.v4.new_code_cell(
             "if not PREDICTED_PATH.exists():\n"
+            "    from fetal_brain_growth.segmentation import segment_image\n"
             "    metadata = segment_image(IMAGE_PATH, PREDICTED_PATH, CHECKPOINT, device_name='auto', "
             "metadata_path=OUT/'segmentation_provenance.json')\n"
             "    public_keys = ('checkpoint_sha256','official_repository','official_commit','device','elapsed_seconds','torch_version','monai_version','intended_use')\n"
@@ -91,23 +95,24 @@ def main() -> None:
         nbf.v4.new_markdown_cell(
             "## 4. Position the real case on multiple quantiles\n\n"
             "P3/P10/P25/P50/P75/P90/P97 are reconstructed from Ren 2022 weekly mean/SD under an explicit "
-            "Normal approximation. Only total brain, intracranial volume, external CSF, and cerebellum are "
-            "definition-aligned enough for automated research flags."
+            "Normal approximation. All eight reported volume measures are shown; only total brain, "
+            "intracranial volume, external CSF, and cerebellum are definition-aligned enough for automated research flags."
         ),
         nbf.v4.new_code_cell(
             "curves, curve_metadata = build_table_curves(method='interpolate')\n"
             "scores = score_against_curves(aggregates, curves)\n"
             "chart = save_growth_chart(curves, OUT/'growth_chart.png', observations=scores, "
-            "regions=['total_brain','intracranial_volume','external_csf','cerebellum'], "
-            "title='Real fetal MRI example on volume references', "
-            "subtitle='30-week IMAGINE atlas example • FetalSynthSeg prediction • Ren 2022 summary reference')\n"
+            "regions=tuple(REFERENCE_GROUPS), "
+            "title='Real fetal MRI example across all Ren 2022 volume measures', "
+            "subtitle='30-week IMAGINE atlas • green = definition-aligned screen; orange = comparison only')\n"
             "display(Image(filename=str(chart), width=1200))\n"
             "display(scores[['region','volume_ml','estimated_percentile_bounded','status','interpretation_note']])"
         ),
-        nbf.v4.new_markdown_cell("## 5. Single-slide radiology case report"),
+        nbf.v4.new_markdown_cell("## 5. Multi-panel radiology case report"),
         nbf.v4.new_code_cell(
             "report = save_case_report(IMAGE_PATH, PREDICTED_PATH, curves, scores, OUT/'case_report.png', "
-            "subject_id='IMAGINE atlas example sub-sta30', gestational_age_weeks=30.0, dice=dice)\n"
+            "subject_id='IMAGINE atlas example sub-sta30', gestational_age_weeks=30.0, dice=dice, "
+            "regions=tuple(REFERENCE_GROUPS))\n"
             "display(Image(filename=str(report), width=1400))"
         ),
         nbf.v4.new_markdown_cell(

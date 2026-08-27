@@ -337,9 +337,11 @@ source with `python scripts/build_feta_meeting_notebook.py`.
 The public, fully executed demonstration is
 [`notebooks/Radiology_Meeting_Demo.ipynb`](notebooks/Radiology_Meeting_Demo.ipynb)
 or standalone [`docs/Radiology_Meeting_Demo.html`](docs/Radiology_Meeting_Demo.html).
-It runs FetalSynthSeg on the real 30-week image, checks it against the manual
-labels, measures tissue and aggregate volumes, plots seven quantiles, and makes
-the radiology case report. Run
+It creates or reuses the FetalSynthSeg prediction for the real 30-week image,
+checks it against the manual labels, measures tissue and aggregate volumes,
+and plots seven quantiles for all eight Ren measures. Reusing an existing
+prediction needs only the notebook dependencies; MONAI and PyTorch are imported
+only when inference is actually required. Run
 `python scripts/build_demo_notebook.py` to reconstruct the notebook source.
 
 ## Intended use
