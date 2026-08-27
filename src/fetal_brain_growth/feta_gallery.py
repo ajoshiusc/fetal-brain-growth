@@ -54,7 +54,7 @@ def _case_status(
 
 
 def _save_overview(records: list[dict[str, object]], output_path: Path, *, dpi: int = 240) -> None:
-    fig, axes = plt.subplots(2, 5, figsize=(18, 8.0), facecolor="white")
+    fig, axes = plt.subplots(2, 5, figsize=(19, 9.0), facecolor="white")
     for ax, record in zip(axes.flat, records):
         intensity, labels, _ = load_aligned_canonical(record["image_path"], record["segmentation_path"])
         index = _best_slice(labels, 2)
@@ -78,7 +78,7 @@ def _save_overview(records: list[dict[str, object]], output_path: Path, *, dpi: 
         ax.set_title(
             f"{record['subject_id']} • {record['gestational_age_weeks']:.1f} w\n"
             f"{record['feta_phenotype']} • {screen_text}",
-            fontsize=9.5,
+            fontsize=11.5,
             color=PHENOTYPE_COLORS.get(str(record["feta_phenotype"]), "#17233C"),
             weight="bold",
         )
@@ -87,16 +87,16 @@ def _save_overview(records: list[dict[str, object]], output_path: Path, *, dpi: 
             spine.set_edgecolor("#C43D3D" if flagged else "#8190A5")
         ax.set_xticks([])
         ax.set_yticks([])
-    fig.suptitle("Ten real FeTA fetal MRIs with expert segmentation outlines", fontsize=17, weight="bold", color="#17233C")
+    fig.suptitle("Ten real FeTA fetal MRIs with expert segmentation outlines", fontsize=23, weight="bold", color="#17233C")
     fig.text(
         0.5,
         0.015,
         "Title color is the FeTA dataset phenotype; red frame means ≥1 research reference flag. Neither is a diagnosis generated here.",
         ha="center",
-        fontsize=9,
+        fontsize=11,
         color="#5D6877",
     )
-    fig.tight_layout(rect=(0.01, 0.05, 0.99, 0.94))
+    fig.tight_layout(rect=(0.01, 0.06, 0.99, 0.92))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=dpi, bbox_inches="tight", facecolor="white")
     plt.close(fig)

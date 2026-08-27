@@ -35,11 +35,11 @@ def _draw_image_panel(
         mask = overlay == label
         if label and mask.any():
             ax.contour(mask.astype(float), levels=[0.5], colors=[LABEL_COLORS[label]], linewidths=1.2, origin="lower")
-    ax.set_title(view.capitalize(), color="white", fontsize=12, weight="bold")
-    ax.text(0.015, 0.50, spec["left"], transform=ax.transAxes, color="white", va="center", weight="bold")
-    ax.text(0.985, 0.50, spec["right"], transform=ax.transAxes, color="white", ha="right", va="center", weight="bold")
-    ax.text(0.50, 0.985, spec["top"], transform=ax.transAxes, color="white", ha="center", va="top", weight="bold")
-    ax.text(0.50, 0.015, spec["bottom"], transform=ax.transAxes, color="white", ha="center", va="bottom", weight="bold")
+    ax.set_title(view.capitalize(), color="white", fontsize=15, weight="bold")
+    ax.text(0.015, 0.50, spec["left"], transform=ax.transAxes, color="white", va="center", fontsize=11, weight="bold")
+    ax.text(0.985, 0.50, spec["right"], transform=ax.transAxes, color="white", ha="right", va="center", fontsize=11, weight="bold")
+    ax.text(0.50, 0.985, spec["top"], transform=ax.transAxes, color="white", ha="center", va="top", fontsize=11, weight="bold")
+    ax.text(0.50, 0.015, spec["bottom"], transform=ax.transAxes, color="white", ha="center", va="bottom", fontsize=11, weight="bold")
     ax.set_axis_off()
 
 
@@ -64,13 +64,13 @@ def save_case_report(
     vmin, vmax = np.percentile(foreground, [1, 99]) if foreground.size else (float(intensity.min()), float(intensity.max()))
     chart_columns = 3 if len(regions) >= 7 else min(4, len(regions))
     chart_rows = int(np.ceil(len(regions) / chart_columns))
-    fig = plt.figure(figsize=(18, 5.0 + 4.5 * chart_rows), facecolor="white")
+    fig = plt.figure(figsize=(20, 5.6 + 4.8 * chart_rows), facecolor="white")
     grid = fig.add_gridspec(
         1 + chart_rows,
         12,
-        height_ratios=(1.05, *([1.0] * chart_rows)),
-        hspace=0.38,
-        wspace=0.32,
+        height_ratios=(1.10, *([1.0] * chart_rows)),
+        hspace=0.42,
+        wspace=0.36,
     )
     for index, view in enumerate(VIEW_SPECS):
         ax = fig.add_subplot(grid[0, index * 3 : (index + 1) * 3], facecolor="#080B10")
@@ -78,16 +78,27 @@ def save_case_report(
 
     text_axis = fig.add_subplot(grid[0, 9:12])
     text_axis.axis("off")
-    text_axis.text(0, 0.98, segmentation_source, va="top", fontsize=13, weight="bold", color=INK)
+    text_axis.text(0, 0.98, segmentation_source, va="top", fontsize=15, weight="bold", color=INK)
     if dice is not None:
-        text_axis.text(0, 0.88, f"Mean tissue Dice: {dice.dice.mean():.3f}", va="top", fontsize=11, color=INK)
+        text_axis.text(0, 0.87, f"Mean tissue Dice: {dice.dice.mean():.3f}", va="top", fontsize=12, color=INK)
         dice_lines = [f"{row.tissue}: {row.dice:.3f}" for row in dice.itertuples(index=False)]
-        text_axis.text(0, 0.79, "\n".join(dice_lines), va="top", fontsize=9.2, linespacing=1.25, color="#435166")
+        midpoint = int(np.ceil(len(dice_lines) / 2))
+        text_axis.text(0, 0.76, "\n".join(dice_lines[:midpoint]), va="top", fontsize=9.8, linespacing=1.28, color="#435166")
+        text_axis.text(0.54, 0.76, "\n".join(dice_lines[midpoint:]), va="top", fontsize=9.8, linespacing=1.28, color="#435166")
     legend = [
         Line2D([0], [0], color=LABEL_COLORS[label], lw=2.5, label=LABEL_TITLES[label])
         for label in sorted(FETA_LABELS) if label
     ]
-    text_axis.legend(handles=legend, loc="lower left", frameon=False, fontsize=8.5, ncol=1, borderaxespad=0)
+    text_axis.legend(
+        handles=legend,
+        loc="lower left",
+        frameon=False,
+        fontsize=9.5,
+        ncol=2,
+        borderaxespad=0,
+        columnspacing=0.8,
+        handlelength=1.6,
+    )
 
     for index, region in enumerate(regions):
         row, column = divmod(index, chart_columns)
@@ -111,21 +122,22 @@ def save_case_report(
         ax.set_title(
             f"{REGION_TITLES[region]}\n{point.volume_ml:.1f} mL • P{point.estimated_percentile_bounded:.0f} (bounded)",
             loc="left",
-            fontsize=11,
+            fontsize=13,
             weight="bold",
             color=INK,
         )
-        ax.set_xlabel("Gestational age (weeks)")
-        ax.set_ylabel("Volume (mL)")
+        ax.set_xlabel("Gestational age (weeks)", fontsize=11.5)
+        ax.set_ylabel("Volume (mL)", fontsize=11.5)
         ax.grid(axis="y", color="#DDE3EA", linewidth=0.7)
         ax.spines[["top", "right"]].set_visible(False)
+        ax.tick_params(labelsize=10.5)
 
     fig.suptitle(
         f"{subject_id} • {gestational_age_weeks:.1f} weeks • real fetal T2 SVR",
         x=0.04,
         y=0.985,
         ha="left",
-        fontsize=18,
+        fontsize=23,
         weight="bold",
         color=INK,
     )
@@ -133,7 +145,7 @@ def save_case_report(
         0.04,
         0.012,
         f"Canonical {''.join(orientation)} • radiological convention • research reference only, not a diagnosis",
-        fontsize=8.5,
+        fontsize=10,
         color="#5D6877",
     )
     output_path = Path(output_path)

@@ -81,7 +81,7 @@ def save_growth_chart(
     columns = 3 if len(regions) >= 7 else (2 if len(regions) > 1 else 1)
     rows = int(np.ceil(len(regions) / columns))
     panel_width = 6.2 if columns == 3 else 7.0
-    fig, axes = plt.subplots(rows, columns, figsize=(panel_width * columns, 4.6 * rows), squeeze=False)
+    fig, axes = plt.subplots(rows, columns, figsize=(panel_width * columns, 4.8 * rows), squeeze=False)
     for ax, region in zip(axes.flat, regions):
         curve = curves.loc[curves["region"] == region].sort_values("gestational_age_weeks")
         if curve.empty:
@@ -98,7 +98,7 @@ def save_growth_chart(
                 ax.scatter(
                     float(point.gestational_age_weeks),
                     float(point.volume_ml),
-                    s=48,
+                    s=62,
                     facecolor=POINT_COLORS.get(status, "#111111"),
                     edgecolor="white",
                     linewidth=0.8,
@@ -117,7 +117,7 @@ def save_growth_chart(
                         (float(point.gestational_age_weeks), float(point.volume_ml)),
                         xytext=(x_offset, y_offset),
                         textcoords="offset points",
-                        fontsize=7,
+                        fontsize=9,
                         color=INK,
                         ha=horizontal_alignment,
                         va="bottom" if y_offset >= 0 else "top",
@@ -133,29 +133,42 @@ def save_growth_chart(
                             else None
                         ),
                     )
-        ax.set_title(REGION_TITLES.get(region, region.replace("_", " ").title()), loc="left", weight="bold")
-        ax.set_xlabel("Gestational age (weeks)")
-        ax.set_ylabel("Volume (mL)")
+        ax.set_title(
+            REGION_TITLES.get(region, region.replace("_", " ").title()),
+            loc="left",
+            weight="bold",
+            fontsize=14,
+            pad=8,
+        )
+        ax.set_xlabel("Gestational age (weeks)", fontsize=12)
+        ax.set_ylabel("Volume (mL)", fontsize=12)
         ax.grid(axis="y", color="#DDE3EA", linewidth=0.7)
         ax.spines[["top", "right"]].set_visible(False)
-        ax.tick_params(colors=INK)
+        ax.tick_params(colors=INK, labelsize=11)
     for ax in axes.flat[len(regions):]:
         ax.set_visible(False)
     handles, labels = axes.flat[0].get_legend_handles_labels()
     unique = dict(zip(labels, handles))
     if unique:
-        fig.legend(unique.values(), unique.keys(), loc="upper right", frameon=False, ncol=min(4, len(unique)))
-    fig.suptitle(title, x=0.06, y=0.995, ha="left", color=INK, fontsize=18, weight="bold")
+        fig.legend(
+            unique.values(),
+            unique.keys(),
+            loc="upper right",
+            frameon=False,
+            ncol=min(4, len(unique)),
+            fontsize=11,
+        )
+    fig.suptitle(title, x=0.06, y=0.995, ha="left", color=INK, fontsize=24, weight="bold")
     if subtitle:
-        fig.text(0.06, 0.965, subtitle, ha="left", va="top", color="#4C5A6D", fontsize=9)
+        fig.text(0.06, 0.959, subtitle, ha="left", va="top", color="#4C5A6D", fontsize=12)
     fig.text(
         0.06,
         0.012,
         "Research use only • A centile flag is not a diagnosis • Confirm segmentation QC and reference compatibility",
         color="#5D6877",
-        fontsize=8,
+        fontsize=10,
     )
-    fig.tight_layout(rect=(0.04, 0.04, 0.98, 0.94 if subtitle else 0.96))
+    fig.tight_layout(rect=(0.04, 0.045, 0.98, 0.925 if subtitle else 0.95))
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=dpi, bbox_inches="tight", facecolor="white")
@@ -177,13 +190,14 @@ def save_published_polynomial_comparison(
             linewidth=2.3,
             label=str(metadata.get("title", metadata.get("model_id", "Published model"))),
         )
-    ax.set_title("Published total-brain polynomial models", loc="left", fontsize=16, weight="bold", color=INK)
-    ax.set_xlabel("Gestational age (weeks)")
-    ax.set_ylabel("Predicted mean volume (mL)")
+    ax.set_title("Published total-brain polynomial models", loc="left", fontsize=19, weight="bold", color=INK)
+    ax.set_xlabel("Gestational age (weeks)", fontsize=12)
+    ax.set_ylabel("Predicted mean volume (mL)", fontsize=12)
     ax.grid(axis="y", color="#DDE3EA")
     ax.spines[["top", "right"]].set_visible(False)
-    ax.legend(frameon=False)
-    fig.text(0.11, 0.01, "Mean curves only; published coefficients do not define centiles.", fontsize=9, color="#5D6877")
+    ax.tick_params(labelsize=11)
+    ax.legend(frameon=False, fontsize=11)
+    fig.text(0.11, 0.01, "Mean curves only; published coefficients do not define centiles.", fontsize=10, color="#5D6877")
     fig.tight_layout(rect=(0, 0.04, 1, 1))
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

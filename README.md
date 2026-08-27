@@ -7,17 +7,17 @@
 Standalone Python tools for fetal T2 MRI tissue segmentation, affine-aware
 volumetry, transparent growth references, and presentation-quality radiology
 figures. The package uses the public FetalSynthSeg implementation and its seven
-FeTA tissue labels without redistributing the non-commercial checkpoint or any
-clinical/controlled-access MRI.
+FeTA tissue labels without redistributing the non-commercial checkpoint or raw
+clinical NIfTI/DICOM data. Derived FeTA figures remain governed by FeTA terms.
 
-![Real fetal MRI with FetalSynthSeg outlines in standard orientation](docs/images/real_fetal_segmentation_qc.png)
+![Real fetal SVR MRI with expert FeTA outlines in standard orientation](docs/images/real_fetal_svr_segmentation_qc.png)
 
-This is a **real 30-week fetal T2 atlas image**, not a synthetic phantom. It is
-the `sub-sta30` example distributed by FetalSynthSeg and originates from the CC0
-[IMAGINE Fetal T2-weighted MRI Atlas](https://doi.org/10.7910/DVN/WE9JVR).
-The automatic result has mean seven-tissue Dice 0.836 against the supplied
-manual labels. See [real-example provenance](docs/REAL_EXAMPLE.md) and the
-[per-label Dice table](docs/real_example_dice.csv).
+This is a **real 33.1-week fetal T2 SVR acquisition**, not a synthetic phantom
+or population atlas. It is anonymized FeTA 2.2 case `sub-050`, shown with the
+dataset's expert segmentation. FeTA records its phenotype as `Pathological`;
+that independent dataset field is kept separate from the volumetric reference
+flags generated here. The image is included locally under FeTA terms and must
+not be treated as a diagnostic exemplar.
 
 ## What is included
 
@@ -26,19 +26,43 @@ manual labels. See [real-example provenance](docs/REAL_EXAMPLE.md) and the
 - seven native FeTA tissue volumes plus total brain and intracranial volume;
 - a default nine-measure reference fitted only to QC-passing FeTA 2.2 cases
   explicitly labeled `Neurotypical`;
-- P3/P10/P25/P50/P75/P90/P97 charts reconstructed from published weekly
-  summary values;
+- P3/P10/P25/P50/P75/P90/P97 charts from the primary FeTA-matched fit, plus a
+  secondary reconstruction from published weekly summary values;
 - interpolated, quadratic, cubic, and cross-validated automatic table fitting;
 - direct spline/quadratic/cubic quantile regression for a local
   FetalSynthSeg-matched control cohort;
 - published coefficient-only mean models from Jarvis 2016 and Ren 2022;
 - canonical RAS axial/coronal/sagittal panels in radiological convention;
-- 300-dpi PNG output and vector SVG/PDF support through Matplotlib;
+- large, presentation-readable typography with 300-dpi PNG output and vector
+  SVG/PDF support through Matplotlib;
 - an executed real-data Jupyter notebook and a local ten-case FeTA gallery.
 
-The public figure below uses only the CC0 IMAGINE atlas example—no FeTA case is
-shown. It includes every Ren 2022 volume measure available in the project. The
-four directly aligned measures are green; the four boundary-mismatched measures
+## Reference hierarchy
+
+For FetalSynthSeg outputs, use references in this order:
+
+1. **Primary local teaching reference:** the nine-region FeTA-derived curves,
+   because their label definitions exactly match FetalSynthSeg/FeTA.
+2. **Preferred validation target:** a larger, independent normal cohort
+   processed with the same frozen segmentation, SVR, acquisition, and QC
+   pipeline, using direct quantile regression.
+3. **Secondary literature comparison:** Ren 2022 summary curves. Only total
+   brain, intracranial volume, external CSF, and cerebellum are sufficiently
+   aligned for guarded comparison; the remaining four measures are not used
+   for abnormal/normal classification.
+
+The FeTA fit is more anatomically compatible than Ren, but its present 30-case,
+partly in-sample construction is still a teaching reference—not a validated
+clinical norm. Reference compatibility does not remove the need for visual
+segmentation QC and neuroradiology review.
+
+The primary figure below places the same real fetal SVR case on the
+FeTA-derived quantiles.
+
+![Real fetal SVR case across nine FeTA-matched growth charts](docs/images/real_fetal_svr_growth_chart.png)
+
+The Ren figure is retained as a secondary compatibility-limited illustration.
+Four directly aligned measures are green; four boundary-mismatched measures
 are orange and explicitly comparison-only.
 
 ![Public fetal MRI example across all eight Ren growth charts](docs/images/real_fetal_growth_chart.png)
@@ -72,7 +96,11 @@ notebook. The installer keeps `models/` and `third_party/` out of Git. For PHI
 safety, `data/`, DICOM, checkpoints, and common clinical-data directories are
 ignored.
 
-## Real example: reproduce the checked-in figures
+## Public inference execution example
+
+The repository keeps the CC0 IMAGINE atlas example only as a reproducible
+automatic-inference and Dice execution check. The radiology figures featured
+above and below use the real FeTA SVR case, not the atlas.
 
 Run automatic segmentation:
 
@@ -85,7 +113,7 @@ fbg segment \
   --metadata demo_outputs/real_example/segmentation_provenance.json
 ```
 
-Recreate the segmentation QC, eight-panel growth chart and case report, Dice
+Recreate the segmentation QC, secondary eight-panel Ren comparison, Dice
 table, volume table, scores, and provenance:
 
 ```bash
@@ -96,9 +124,10 @@ python scripts/make_real_example_figures.py \
   --output-dir docs
 ```
 
-The automatic volumes place this example as follows. The percentile estimate is
-interpolated between the available quantiles and bounded to P3–P97; it is not a
-population-calibrated diagnostic probability.
+On the secondary Ren comparison, the automatic volumes place this example as
+follows. The percentile estimate is interpolated between the available
+quantiles and bounded to P3–P97; it is not a population-calibrated diagnostic
+probability.
 
 | Definition-aligned measure | Volume | Bounded position | P3–P97 screen |
 |---|---:|---:|---|
@@ -107,7 +136,22 @@ population-calibrated diagnostic probability.
 | External CSF | 95.0 mL | P7 | within interval |
 | Cerebellum | 8.0 mL | P75 | within interval |
 
-![Public fetal segmentation and eight-panel growth report](docs/images/real_fetal_case_report.png)
+The primary README report uses the real fetal SVR and all nine FeTA-matched
+panels:
+
+![Real fetal segmentation and nine-panel FeTA-matched growth report](docs/images/real_fetal_svr_case_report.png)
+
+Regenerate these three real-SVR README figures locally with:
+
+```bash
+python scripts/make_feta_readme_figures.py \
+  --feta-root /deneb_disk/feta_2022/feta_2.2 \
+  --subject-id sub-050
+```
+
+This writes only derived PNG figures; it does not copy raw FeTA NIfTI data into
+the repository. Keep the figures governed and distributed according to FeTA
+terms.
 
 ## Analyze one clinical SVR case
 
@@ -236,7 +280,7 @@ comparison. The matched FeTA reference is now the default because it produces
 definition-compatible charts for all nine measures in both cohort and
 individual-case reports.
 
-## Literature alternative: Ren 2022 weekly summaries
+## Secondary, compatibility-limited reference: Ren 2022 weekly summaries
 
 Build the conservative interpolated reference:
 
@@ -279,8 +323,9 @@ research flag only when label definitions are compatible. Total brain,
 intracranial volume, external CSF, and cerebellum pass that guard; cortical gray
 matter, white-plus-deep-gray, ventricles, and brainstem remain comparison-only.
 These bands are estimated population reference intervals, not confidence
-intervals around a mean. The current demo uses Ren 2022; the BMJ Fetal &
-Neonatal paper is not the active reference source.
+intervals around a mean. The demo retains Ren for transparent literature
+comparison, but uses the FeTA-derived curves as its primary local reference.
+The BMJ Fetal & Neonatal paper is not the active reference source.
 
 Optional smoothing:
 
@@ -373,10 +418,12 @@ The public, fully executed demonstration is
 or standalone [`docs/Radiology_Meeting_Demo.html`](docs/Radiology_Meeting_Demo.html).
 It creates or reuses the FetalSynthSeg prediction for the real 30-week image,
 checks it against the manual labels, measures tissue and aggregate volumes,
-plots seven quantiles for all eight Ren measures, and—when the local fit or
-FeTA data is available—adds nine FeTA/FetalSynthSeg-matched quantile panels for
-the same public atlas observation. The FeTA section contains aggregate curves
-only and no FeTA subject image. Reusing an existing
+uses nine FeTA/FetalSynthSeg-matched quantile panels as the primary local
+reference when the fit or FeTA data is available, and retains all eight Ren
+panels as a secondary compatibility-limited comparison. The final case report
+also prefers the FeTA-matched reference and falls back to Ren only when FeTA is
+unavailable. The FeTA section contains aggregate curves only and no FeTA
+subject image. Reusing an existing
 prediction needs only the notebook dependencies; MONAI and PyTorch are imported
 only when inference is actually required. Run
 `python scripts/build_demo_notebook.py` to reconstruct the notebook source.

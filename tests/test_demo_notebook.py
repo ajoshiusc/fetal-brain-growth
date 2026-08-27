@@ -12,7 +12,8 @@ def test_demo_notebook_defers_optional_segmentation_import_and_shows_all_regions
     assert "from fetal_brain_growth.segmentation import segment_image" not in code_cells[0]
     segmentation_cell = next(cell for cell in code_cells if "if not PREDICTED_PATH.exists()" in cell)
     assert "    from fetal_brain_growth.segmentation import segment_image" in segmentation_cell
-    assert sum("regions=tuple(REFERENCE_GROUPS)" in cell for cell in code_cells) == 2
+    assert sum("regions=tuple(REFERENCE_GROUPS)" in cell for cell in code_cells) == 1
+    assert any("report_regions = tuple(FETA_MATCHED_REFERENCE_REGIONS)" in cell for cell in code_cells)
 
 
 def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
@@ -29,7 +30,7 @@ def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
     assert "reconstructed centiles" in demo_markdown
     assert "Q_q(t) = max(0" in demo_markdown
     assert "bounded to P3–P97" in demo_markdown
-    assert "public case on FeTA-generated matched quantiles" in demo_markdown
+    assert "Primary local reference: FeTA-generated matched quantiles" in demo_markdown
     assert "no FeTA subject image" in demo_markdown
     assert "protocol-matched teaching reference" in feta_markdown
     assert "Q_q(GA) = exp" in feta_markdown
@@ -48,3 +49,16 @@ def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
     assert "growth_chart_feta_neurotypical.png" in demo_code
     assert "definition_guard=False" in demo_code
     assert "FeTA quantile plot skipped" in demo_code
+    assert "report_curves, report_scores = feta_curves, feta_scores" in demo_code
+    assert "Ren 2022 compatibility-limited comparison" in demo_code
+
+
+def test_readme_prioritizes_feta_and_uses_a_real_svr_report():
+    root = Path(__file__).resolve().parents[1]
+    readme = (root / "README.md").read_text()
+
+    assert "**Primary local teaching reference:** the nine-region FeTA-derived curves" in readme
+    assert "Secondary, compatibility-limited reference: Ren 2022" in readme
+    assert "docs/images/real_fetal_svr_segmentation_qc.png" in readme
+    assert "docs/images/real_fetal_svr_growth_chart.png" in readme
+    assert "docs/images/real_fetal_svr_case_report.png" in readme

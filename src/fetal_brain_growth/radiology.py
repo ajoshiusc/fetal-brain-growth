@@ -77,7 +77,7 @@ def save_radiology_figure(
     vmin, vmax = np.percentile(foreground_intensity, [1, 99])
     if vmax <= vmin:
         vmin, vmax = float(intensity.min()), float(intensity.max() + 1)
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5.6), facecolor="#080B10")
+    fig, axes = plt.subplots(1, 3, figsize=(16, 6.2), facecolor="#080B10")
     present_labels = [value for value in FETA_LABELS if value and np.any(labels == value)]
     for ax, (view, spec) in zip(axes, VIEW_SPECS.items()):
         axis = int(spec["axis"])
@@ -101,16 +101,16 @@ def save_radiology_figure(
                         interpolation="nearest",
                     )
                 ax.contour(mask.astype(float), levels=[0.5], colors=[LABEL_COLORS[value]], linewidths=1.15, origin="lower")
-        ax.set_title(view.capitalize(), color="white", fontsize=13, weight="bold", pad=8)
-        ax.text(0.015, 0.50, spec["left"], transform=ax.transAxes, color="white", va="center", fontsize=11, weight="bold")
-        ax.text(0.985, 0.50, spec["right"], transform=ax.transAxes, color="white", ha="right", va="center", fontsize=11, weight="bold")
-        ax.text(0.50, 0.985, spec["top"], transform=ax.transAxes, color="white", ha="center", va="top", fontsize=11, weight="bold")
-        ax.text(0.50, 0.015, spec["bottom"], transform=ax.transAxes, color="white", ha="center", va="bottom", fontsize=11, weight="bold")
+        ax.set_title(view.capitalize(), color="white", fontsize=16, weight="bold", pad=9)
+        ax.text(0.015, 0.50, spec["left"], transform=ax.transAxes, color="white", va="center", fontsize=13, weight="bold")
+        ax.text(0.985, 0.50, spec["right"], transform=ax.transAxes, color="white", ha="right", va="center", fontsize=13, weight="bold")
+        ax.text(0.50, 0.985, spec["top"], transform=ax.transAxes, color="white", ha="center", va="top", fontsize=13, weight="bold")
+        ax.text(0.50, 0.015, spec["bottom"], transform=ax.transAxes, color="white", ha="center", va="bottom", fontsize=13, weight="bold")
         ax.set_axis_off()
     title = subject_id or Path(image_path).name.replace(".nii.gz", "").replace(".nii", "")
     if gestational_age_weeks is not None:
         title += f"  •  {gestational_age_weeks:.1f} weeks"
-    fig.suptitle(title, color="white", fontsize=17, weight="bold", x=0.025, ha="left", y=0.99)
+    fig.suptitle(title, color="white", fontsize=22, weight="bold", x=0.025, ha="left", y=0.99)
     handles = [
         Line2D([0], [0], color=LABEL_COLORS[value], lw=2.5, label=LABEL_TITLES[value])
         for value in present_labels
@@ -121,7 +121,7 @@ def save_radiology_figure(
         ncol=min(7, len(handles)),
         frameon=False,
         labelcolor="white",
-        fontsize=9,
+        fontsize=11,
         bbox_to_anchor=(0.5, 0.015),
     )
     fig.text(
@@ -130,7 +130,7 @@ def save_radiology_figure(
         f"Canonical {''.join(orientation)} • radiological convention",
         ha="right",
         color="#B7C0CD",
-        fontsize=8,
+        fontsize=9.5,
     )
     fig.tight_layout(rect=(0.01, 0.08, 0.99, 0.94), w_pad=0.25)
     output_path = Path(output_path)

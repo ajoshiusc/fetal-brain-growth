@@ -98,7 +98,7 @@ def main() -> None:
         ),
         nbf.v4.new_markdown_cell(
             "## 4. Position the real case on multiple quantiles\n\n"
-            "### Ren 2022 summary-data reconstruction\n\n"
+            "### Secondary literature comparison: Ren 2022 summary-data reconstruction\n\n"
             "These bands are **reconstructed centiles**, not quantiles directly fitted from the individual "
             "participants in this notebook and not confidence intervals around the mean. For each of the eight "
             "Ren measures, the repository contains the paper's weekly mean `μ(t)` and SD `σ(t)`. For quantile "
@@ -134,8 +134,9 @@ def main() -> None:
             "automated Ren flags; the four orange points are comparison-only because anatomical definitions differ."
         ),
         nbf.v4.new_markdown_cell(
-            "## 5. The public case on FeTA-generated matched quantiles\n\n"
-            "This second set uses the locally generated nine-region FeTA teaching reference: 30 QC-passing "
+            "## 5. Primary local reference: FeTA-generated matched quantiles\n\n"
+            "For FetalSynthSeg/FeTA-label analysis, this is the preferred local teaching comparison because its "
+            "nine regions use the same label ontology. It uses 30 QC-passing "
             "expert segmentations labeled neurotypical, 22.7–34.8 weeks, with a quadratic centered-age model "
             "in log-volume space and a constant log-residual SD. Its quantiles are "
             "`Q_q(GA) = exp(fitted_log_volume(GA) + Φ⁻¹(q) × residual_SD)`. Unlike the Ren comparison, all nine "
@@ -178,11 +179,23 @@ def main() -> None:
             "    display(Image(filename=str(feta_chart), width=1200))\n"
             "    display(feta_scores[['region','volume_ml','estimated_percentile_bounded','status']])"
         ),
-        nbf.v4.new_markdown_cell("## 6. Multi-panel radiology case report"),
+        nbf.v4.new_markdown_cell(
+            "## 6. Primary-reference radiology case report\n\n"
+            "When the FeTA-matched reference is available, this report uses its nine definition-compatible panels. "
+            "Ren is used only as a fallback when the local FeTA fit is unavailable."
+        ),
         nbf.v4.new_code_cell(
-            "report = save_case_report(IMAGE_PATH, PREDICTED_PATH, curves, scores, OUT/'case_report.png', "
+            "if feta_curves is not None:\n"
+            "    report_curves, report_scores = feta_curves, feta_scores\n"
+            "    report_regions = tuple(FETA_MATCHED_REFERENCE_REGIONS)\n"
+            "    report_reference = 'FeTA-matched teaching reference'\n"
+            "else:\n"
+            "    report_curves, report_scores = curves, scores\n"
+            "    report_regions = tuple(REFERENCE_GROUPS)\n"
+            "    report_reference = 'Ren 2022 compatibility-limited comparison'\n"
+            "report = save_case_report(IMAGE_PATH, PREDICTED_PATH, report_curves, report_scores, OUT/'case_report.png', "
             "subject_id='IMAGINE atlas example sub-sta30', gestational_age_weeks=30.0, dice=dice, "
-            "regions=tuple(REFERENCE_GROUPS))\n"
+            "segmentation_source=f'FetalSynthSeg prediction • {report_reference}', regions=report_regions)\n"
             "display(Image(filename=str(report), width=1400))"
         ),
         nbf.v4.new_markdown_cell(
