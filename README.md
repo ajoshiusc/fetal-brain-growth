@@ -10,11 +10,12 @@ figures. The package uses the public FetalSynthSeg implementation and its seven
 FeTA tissue labels without redistributing the non-commercial checkpoint or raw
 clinical NIfTI/DICOM data. Derived FeTA figures remain governed by FeTA terms.
 
-![Real fetal SVR MRI with expert FeTA outlines in standard orientation](docs/images/real_fetal_svr_segmentation_qc.png)
+![Real fetal SVR MRI with automatic FetalSynthSeg outlines in standard orientation](docs/images/real_fetal_svr_segmentation_qc.png)
 
 This is a **real 33.1-week fetal T2 SVR acquisition**, not a synthetic phantom
 or population atlas. It is anonymized FeTA 2.2 case `sub-050`, shown with the
-dataset's expert segmentation. FeTA records its phenotype as `Pathological`;
+automatically generated FetalSynthSeg prediction used for the volume analysis.
+FeTA records its phenotype as `Pathological`;
 that independent dataset field is kept separate from the volumetric reference
 flags generated here. The image is included locally under FeTA terms and must
 not be treated as a diagnostic exemplar.
@@ -24,8 +25,8 @@ not be treated as a diagnostic exemplar.
 - a checksum-verified inference wrapper for the official FetalSynthSeg v1
   checkpoint;
 - seven native FeTA tissue volumes plus total brain and intracranial volume;
-- a default nine-measure reference fitted only to QC-passing FeTA 2.2 cases
-  explicitly labeled `Neurotypical`;
+- a default nine-measure reference fitted to QC-passing automatic predictions
+  from FeTA 2.2 cases explicitly labeled `Neurotypical`;
 - P3/P10/P25/P50/P75/P90/P97 charts from the primary FeTA-matched fit, plus a
   secondary reconstruction from published weekly summary values;
 - interpolated, quadratic, cubic, and cross-validated automatic table fitting;
@@ -42,7 +43,7 @@ not be treated as a diagnostic exemplar.
 For FetalSynthSeg outputs, use references in this order:
 
 1. **Primary local teaching reference:** the nine-region FeTA-derived curves,
-   because their label definitions exactly match FetalSynthSeg/FeTA.
+   generated with the same frozen FetalSynthSeg model as the analyzed case.
 2. **Preferred validation target:** a larger, independent normal cohort
    processed with the same frozen segmentation, SVR, acquisition, and QC
    pipeline, using direct quantile regression.
@@ -51,7 +52,7 @@ For FetalSynthSeg outputs, use references in this order:
    aligned for guarded comparison; the remaining four measures are not used
    for abnormal/normal classification.
 
-The FeTA fit is more anatomically compatible than Ren, but its present 30-case,
+The FeTA fit is more anatomically compatible than Ren, but its small,
 partly in-sample construction is still a teaching reference—not a validated
 clinical norm. Reference compatibility does not remove the need for visual
 segmentation QC and neuroradiology review.
@@ -98,9 +99,9 @@ ignored.
 
 ## Public inference execution example
 
-The repository keeps the CC0 IMAGINE atlas example only as a reproducible
+The repository also keeps the CC0 IMAGINE atlas example as a reproducible
 automatic-inference and Dice execution check. The radiology figures featured
-above and below use the real FeTA SVR case, not the atlas.
+above and below use the automatic prediction for the real FeTA SVR case.
 
 Run automatic segmentation:
 
@@ -146,7 +147,8 @@ Regenerate these three real-SVR README figures locally with:
 ```bash
 python scripts/make_feta_readme_figures.py \
   --feta-root /deneb_disk/feta_2022/feta_2.2 \
-  --subject-id sub-050
+  --subject-id sub-050 \
+  --checkpoint models/KISPI-all_fss.ckpt
 ```
 
 This writes only derived PNG figures; it does not copy raw FeTA NIfTI data into
@@ -205,9 +207,9 @@ model error: visually QC every FetalSynthSeg prediction before volumetry.
 
 ## Default reference: normal-appearing FeTA 2.2 brains
 
-The exact protocol-matched default uses the locally available FeTA 2.2 expert
-segmentations rather than forcing all seven labels into non-equivalent
-literature definitions:
+The exact protocol-matched default runs the frozen FetalSynthSeg model on the
+locally available FeTA 2.2 MRIs rather than using the dataset's expert label
+maps or forcing all seven labels into non-equivalent literature definitions:
 
 ```bash
 fbg feta-reference \
@@ -220,12 +222,13 @@ pass `--feta-root /path/to/feta_2.2` or set `FETA_ROOT`. It performs the
 following transparent construction:
 
 1. retain only rows whose FeTA `Pathology` field is exactly `Neurotypical`;
-2. exclude technical segmentation-QC failures, but perform no volume-based
+2. generate or reuse a checksum-verified FetalSynthSeg prediction for every MRI;
+3. exclude technical segmentation-QC failures, but perform no volume-based
    outlier removal;
-3. measure all seven native tissues, total brain, and intracranial volume from
+4. measure all seven predicted tissues, total brain, and intracranial volume from
    the NIfTI affine;
-4. fit `log(volume) = polynomial(GA - mean(GA))` independently per measure;
-5. estimate one residual SD in log-volume space and calculate
+5. fit `log(volume) = polynomial(GA - mean(GA))` independently per measure;
+6. estimate one residual SD in log-volume space and calculate
    `Qq(GA) = exp(fitted_log_volume(GA) + Phi_inverse(q) * residual_SD)`.
 
 Here P50 is the fitted median. P3–P97 are estimated population intervals under
@@ -234,15 +237,13 @@ for the fitted median. Case positions are interpolated between the seven fitted
 quantiles and bounded to P3–P97. Thus “P97 bounded” means P97 or higher, not an
 exact tail probability.
 
-On the currently mounted release this gives 30 QC-passing controls from 22.7 to
-34.8 weeks: 31 rows are labeled neurotypical and `sub-041` is excluded because
-the segmentation reaches the image boundary. The output contains
+The output metadata records the exact QC-passing count and observed age range
+for the generated predictions. The output contains
 P3/P10/P25/P50/P75/P90/P97, fit coefficients, leave-one-out errors, subject
 IDs, QC records, and source metadata. Quadratic is the conservative default;
-`--degree 3` is an explicit sensitivity option. On these 30 controls, cubic
-leave-one-out log-RMSE was no better for any measure and was up to 8.4% worse,
-supporting the quadratic default. Neither degree should be extrapolated beyond
-the observed age range.
+`--degree 3` is an explicit sensitivity option. Compare the recorded
+leave-one-out log-RMSE before selecting the more flexible model. Neither degree
+should be extrapolated beyond the observed age range.
 
 This small, cross-sectional, partially in-sample reference is useful for
 teaching and pipeline development, not a validated clinical norm. A larger
@@ -379,7 +380,7 @@ or standalone [`docs/Radiology_Meeting_Demo.html`](docs/Radiology_Meeting_Demo.h
 It creates or reuses the FetalSynthSeg prediction for the real 30-week image,
 checks it against the manual labels, measures tissue and aggregate volumes,
 uses nine FeTA/FetalSynthSeg-matched quantile panels as the primary local
-reference when the fit or FeTA data is available, and retains all eight Ren
+reference when the automatically segmented FeTA fit is available, and retains all eight Ren
 panels as a secondary compatibility-limited comparison. The final case report
 also prefers the FeTA-matched reference and falls back to Ren only when FeTA is
 unavailable. The FeTA section contains aggregate curves only and no FeTA

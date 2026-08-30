@@ -21,11 +21,12 @@ fbg feta-reference --degree 2 --output-dir outputs/feta_reference
 ```
 
 The builder reads `participants.tsv`, retains only the case-insensitive exact
-label `Pathology == Neurotypical`, measures expert segmentations using the
-NIfTI affine, and excludes only technical segmentation-QC failures. It does not
-remove cases based on their volume. On the current local FeTA 2.2 release, 31
-rows pass the phenotype filter and 30 pass technical QC, spanning 22.7–34.8
-weeks.
+label `Pathology == Neurotypical`, runs or reuses a checksum-verified
+FetalSynthSeg prediction for each MRI, measures those predictions using the
+NIfTI affine, and excludes only technical segmentation-QC failures. It never
+opens the FeTA expert label maps for this analysis and does not remove cases
+based on their volume. Generated metadata records the exact included count and
+age span.
 
 For region `r`, centered age `x = GA - mean(GA)`, and degree `d`:
 
@@ -35,11 +36,9 @@ Q_r,q(GA) = exp(fitted_log(V_r) + Phi_inverse(q) * residual_SD_r)
 ```
 
 The default is degree 2; degree 3 is available only as an explicit sensitivity
-analysis. In the current 30-case fit, cubic leave-one-subject-out log-RMSE was
-no better for any measure and was up to 8.4% worse. One constant residual SD is
-estimated per region in log-volume space.
-This restrained location-scale model is used because 30 controls are
-insufficient for stable direct extreme-quantile regression. Outputs record the
+analysis. One constant residual SD is estimated per region in log-volume
+space. This restrained location-scale model is used because the small control
+set is insufficient for stable direct extreme-quantile regression. Outputs record the
 coefficients, residual SD, log-scale R², leave-one-subject-out RMSE, included
 subject IDs, QC exclusions, and P3/P10/P25/P50/P75/P90/P97 curves.
 

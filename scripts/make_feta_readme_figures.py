@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate README figures from one real FeTA SVR and matched quantiles."""
+"""Generate README figures from an automatically segmented real FeTA SVR."""
 
 from __future__ import annotations
 
@@ -13,7 +13,8 @@ from fetal_brain_growth.case_report import save_case_report
 from fetal_brain_growth.charts import save_growth_chart
 from fetal_brain_growth.feta_reference import (
     build_feta_matched_reference,
-    find_feta_case_files,
+    find_feta_image,
+    generate_feta_predictions,
     load_feta_participants,
     resolve_feta_root,
     save_feta_matched_reference,
@@ -26,13 +27,15 @@ from fetal_brain_growth.volumetry import measure_segmentation
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Create a real FeTA MRI, matched growth chart, and radiology report for the README."
+        description="Automatically segment a real FeTA MRI and create its README analysis figures."
     )
     parser.add_argument("--feta-root", help="FeTA 2.2 root; otherwise use FETA_ROOT or the known local path")
     parser.add_argument("--subject-id", default="sub-050")
     parser.add_argument("--reference-dir", default="meeting_outputs/feta_10_cases_matched")
     parser.add_argument("--output-dir", default="docs/images")
     parser.add_argument("--degree", type=int, choices=(2, 3), default=2)
+    parser.add_argument("--checkpoint", default="models/KISPI-all_fss.ckpt")
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     args = parser.parse_args()
 
     feta_root = resolve_feta_root(args.feta_root)
@@ -41,12 +44,21 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     curves_path = reference_dir / "feta_neurotypical_reference_curves.csv"
     metadata_path = reference_dir / "feta_neurotypical_reference_metadata.json"
-    if curves_path.exists() and metadata_path.exists():
+    prediction_dir = reference_dir / "fetalsynthseg_predictions"
+    cached_metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
+    if (
+        curves_path.exists()
+        and cached_metadata.get("segmentation_method") == "FetalSynthSeg v1 automatic prediction"
+        and cached_metadata.get("checkpoint_sha256")
+    ):
         curves = pd.read_csv(curves_path)
-        metadata = json.loads(metadata_path.read_text())
+        metadata = cached_metadata
     else:
         curves, metadata, control_tissues, control_volumes, control_qc = build_feta_matched_reference(
             feta_root,
+            prediction_dir=prediction_dir,
+            checkpoint=args.checkpoint,
+            device_name=args.device,
             degree=args.degree,
         )
         save_feta_matched_reference(
@@ -64,7 +76,14 @@ def main() -> None:
         raise ValueError(f"Could not uniquely identify {args.subject_id!r} in participants.tsv.")
     gestational_age = float(participant["Gestational age"].iloc[0])
     phenotype = str(participant.Pathology.iloc[0])
-    image_path, segmentation_path = find_feta_case_files(feta_root, args.subject_id)
+    image_path = find_feta_image(feta_root, args.subject_id)
+    segmentation_path = generate_feta_predictions(
+        feta_root,
+        [args.subject_id],
+        prediction_dir,
+        checkpoint=args.checkpoint,
+        device_name=args.device,
+    )[args.subject_id]
     tissues, aggregates, qc = measure_segmentation(
         segmentation_path,
         subject_id=args.subject_id,
@@ -84,7 +103,7 @@ def main() -> None:
         image_path,
         segmentation_path,
         output_dir / "real_fetal_svr_segmentation_qc.png",
-        subject_id=f"FeTA {args.subject_id} • expert segmentation",
+        subject_id=f"FeTA {args.subject_id} • automatic FetalSynthSeg prediction",
         gestational_age_weeks=gestational_age,
         fill_alpha=0.05,
         dpi=300,
@@ -96,7 +115,7 @@ def main() -> None:
         regions=FETA_MATCHED_REFERENCE_REGIONS,
         title="Real fetal SVR case on FeTA-matched quantiles",
         subtitle=(
-            f"{args.subject_id} • {gestational_age:.1f} weeks • expert segmentation • "
+            f"{args.subject_id} • {gestational_age:.1f} weeks • automatic segmentation • "
             f"FeTA phenotype: {phenotype} • {metadata['subjects']}-control teaching reference"
         ),
         dpi=300,
@@ -109,7 +128,7 @@ def main() -> None:
         output_dir / "real_fetal_svr_case_report.png",
         subject_id=f"FeTA {args.subject_id}",
         gestational_age_weeks=gestational_age,
-        segmentation_source=f"FeTA expert annotation • {phenotype}",
+        segmentation_source=f"FetalSynthSeg automatic prediction • {phenotype}",
         regions=FETA_MATCHED_REFERENCE_REGIONS,
         dpi=300,
     )

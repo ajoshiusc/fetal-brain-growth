@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from fetal_brain_growth.cli import build_parser
-from fetal_brain_growth.feta_reference import fit_feta_matched_reference
+from fetal_brain_growth.feta_reference import fit_feta_matched_reference, generate_feta_predictions
 from fetal_brain_growth.labels import FETA_MATCHED_REFERENCE_REGIONS
 from fetal_brain_growth.references import DEFAULT_QUANTILES, quantile_column
 
@@ -58,3 +60,42 @@ def test_feta_gallery_defaults_to_protocol_matched_quadratic_reference():
     args = build_parser().parse_args(["feta-gallery", "--output-dir", "out"])
     assert args.reference == "feta-neurotypical"
     assert args.feta_degree == 2
+    assert args.device == "auto"
+
+
+def test_feta_reference_defaults_to_automatic_segmentation():
+    args = build_parser().parse_args(["feta-reference", "--output-dir", "out"])
+    assert args.checkpoint is None
+    assert args.device == "auto"
+
+
+def test_feta_prediction_cache_reuses_provenance_matched_output_without_torch(tmp_path):
+    feta_root = tmp_path / "feta"
+    image = feta_root / "sub-001" / "anat" / "sub-001_T2w.nii.gz"
+    image.parent.mkdir(parents=True)
+    image.touch()
+    (feta_root / "participants.tsv").write_text(
+        "participant_id\tPathology\tGestational age\nsub-001\tNeurotypical\t30\n"
+    )
+    prediction_dir = tmp_path / "predictions"
+    prediction_dir.mkdir()
+    prediction = prediction_dir / "sub-001_fetalsynthseg.nii.gz"
+    prediction.touch()
+    (prediction_dir / "sub-001_fetalsynthseg.json").write_text(
+        json.dumps(
+            {
+                "input": str(image.resolve()),
+                "output": str(prediction.resolve()),
+                "checkpoint_sha256": "recorded-checksum",
+            }
+        )
+    )
+
+    paths = generate_feta_predictions(
+        feta_root,
+        ["sub-001"],
+        prediction_dir,
+        checkpoint=tmp_path / "missing-checkpoint.ckpt",
+    )
+
+    assert paths == {"sub-001": prediction.resolve()}

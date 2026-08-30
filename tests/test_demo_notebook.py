@@ -34,7 +34,8 @@ def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
     assert "no FeTA subject image" in demo_markdown
     assert "protocol-matched teaching reference" in feta_markdown
     assert "Q_q(GA) = exp" in feta_markdown
-    assert "30 controls" in feta_markdown
+    assert "automatic FetalSynthSeg predictions" in feta_markdown
+    assert "Expert segmentations in standard orientation" not in feta_markdown
     assert "same ten cases on Ren 2022 reconstructed quantiles" in feta_markdown
 
     feta_code = "\n".join(
@@ -42,6 +43,7 @@ def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
     )
     assert "ten_case_growth_chart_ren2022.png" in feta_code
     assert "ren_scores = score_against_curves" in feta_code
+    assert "checkpoint=CHECKPOINT" in feta_code
 
     demo_code = "\n".join(
         "".join(cell["source"]) for cell in demo["cells"] if cell["cell_type"] == "code"
@@ -51,6 +53,7 @@ def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
     assert "FeTA quantile plot skipped" in demo_code
     assert "report_curves, report_scores = feta_curves, feta_scores" in demo_code
     assert "Ren 2022 compatibility-limited comparison" in demo_code
+    assert "prediction_dir=FETA_REFERENCE_DIR/'fetalsynthseg_predictions'" in demo_code
 
 
 def test_readme_prioritizes_feta_and_uses_a_real_svr_report():
@@ -62,3 +65,4 @@ def test_readme_prioritizes_feta_and_uses_a_real_svr_report():
     assert "docs/images/real_fetal_svr_segmentation_qc.png" in readme
     assert "docs/images/real_fetal_svr_growth_chart.png" in readme
     assert "docs/images/real_fetal_svr_case_report.png" in readme
+    assert "shown with the\nautomatically generated FetalSynthSeg prediction" in readme

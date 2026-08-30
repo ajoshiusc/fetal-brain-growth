@@ -39,6 +39,70 @@ class PreparedImage:
     pad_before: tuple[int, int, int]
 
 
+class FetalSynthSegPredictor:
+    """Load the frozen model once and apply it to one or more images."""
+
+    def __init__(
+        self,
+        checkpoint: str | Path,
+        *,
+        device_name: str = "auto",
+        verify_checksum: bool = True,
+    ) -> None:
+        self.checkpoint = Path(checkpoint).resolve()
+        self.device = resolve_device(device_name)
+        self.model, self.checkpoint_hash = load_model(
+            self.checkpoint,
+            self.device,
+            verify_checksum=verify_checksum,
+        )
+
+    def segment(
+        self,
+        input_path: str | Path,
+        output_path: str | Path,
+        *,
+        qc_path: str | Path | None = None,
+        metadata_path: str | Path | None = None,
+    ) -> dict[str, object]:
+        """Generate and save one prediction with per-image provenance."""
+
+        started = time.perf_counter()
+        prepared = prepare_image(input_path)
+        with torch.inference_mode():
+            tensor = prepared.tensor.to(self.device)
+            if self.device.type == "cuda":
+                with torch.autocast("cuda", dtype=torch.float16):
+                    prediction = self.model(tensor).argmax(dim=1)[0]
+            else:
+                prediction = self.model(tensor).argmax(dim=1)[0]
+        output_image = restore_segmentation(prediction.cpu().numpy(), prepared)
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        nib.save(output_image, str(output_path))
+        if qc_path is not None:
+            save_radiology_figure(input_path, output_path, qc_path)
+        metadata = {
+            "input": str(Path(input_path).resolve()),
+            "output": str(output_path.resolve()),
+            "checkpoint": str(self.checkpoint),
+            "checkpoint_sha256": self.checkpoint_hash,
+            "official_repository": OFFICIAL_REPOSITORY,
+            "official_commit": OFFICIAL_COMMIT,
+            "device": str(self.device),
+            "elapsed_seconds": time.perf_counter() - started,
+            "torch_version": torch.__version__,
+            "monai_version": monai.__version__,
+            "labels": FETA_LABELS,
+            "intended_use": "Research use only; visual QC and expert review required.",
+        }
+        if metadata_path is not None:
+            metadata_path = Path(metadata_path)
+            metadata_path.parent.mkdir(parents=True, exist_ok=True)
+            metadata_path.write_text(json.dumps(metadata, indent=2) + "\n")
+        return metadata
+
+
 def sha256(path: str | Path) -> str:
     digest = hashlib.sha256()
     with open(path, "rb") as stream:
@@ -163,42 +227,17 @@ def segment_image(
     metadata_path: str | Path | None = None,
     verify_checksum: bool = True,
 ) -> dict[str, object]:
-    device = resolve_device(device_name)
-    started = time.perf_counter()
-    prepared = prepare_image(input_path)
-    model, checkpoint_hash = load_model(checkpoint, device, verify_checksum=verify_checksum)
-    with torch.inference_mode():
-        tensor = prepared.tensor.to(device)
-        if device.type == "cuda":
-            with torch.autocast("cuda", dtype=torch.float16):
-                prediction = model(tensor).argmax(dim=1)[0]
-        else:
-            prediction = model(tensor).argmax(dim=1)[0]
-    output_image = restore_segmentation(prediction.cpu().numpy(), prepared)
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    nib.save(output_image, str(output_path))
-    if qc_path is not None:
-        save_radiology_figure(input_path, output_path, qc_path)
-    metadata = {
-        "input": str(Path(input_path).resolve()),
-        "output": str(output_path.resolve()),
-        "checkpoint": str(Path(checkpoint).resolve()),
-        "checkpoint_sha256": checkpoint_hash,
-        "official_repository": OFFICIAL_REPOSITORY,
-        "official_commit": OFFICIAL_COMMIT,
-        "device": str(device),
-        "elapsed_seconds": time.perf_counter() - started,
-        "torch_version": torch.__version__,
-        "monai_version": monai.__version__,
-        "labels": FETA_LABELS,
-        "intended_use": "Research use only; visual QC and expert review required.",
-    }
-    if metadata_path is not None:
-        metadata_path = Path(metadata_path)
-        metadata_path.parent.mkdir(parents=True, exist_ok=True)
-        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n")
-    return metadata
+    predictor = FetalSynthSegPredictor(
+        checkpoint,
+        device_name=device_name,
+        verify_checksum=verify_checksum,
+    )
+    return predictor.segment(
+        input_path,
+        output_path,
+        qc_path=qc_path,
+        metadata_path=metadata_path,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

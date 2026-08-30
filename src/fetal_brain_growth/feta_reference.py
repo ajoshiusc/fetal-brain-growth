@@ -1,7 +1,8 @@
-"""Protocol-matched teaching references from neurotypical FeTA segmentations."""
+"""Protocol-matched references from automatic predictions on neurotypical FeTA MRIs."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -17,7 +18,18 @@ from .volumetry import measure_segmentation
 
 
 DEFAULT_LOCAL_FETA_ROOT = Path("/deneb_disk/feta_2022/feta_2.2")
+DEFAULT_FETALSYNTHSEG_CHECKPOINT = (
+    Path(__file__).resolve().parents[2] / "models" / "KISPI-all_fss.ckpt"
+)
 FETA_DATA_DOI = "10.1038/s41597-021-00946-3"
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def resolve_feta_root(path: str | Path | None = None) -> Path:
@@ -53,17 +65,93 @@ def load_feta_participants(feta_root: str | Path) -> pd.DataFrame:
 
 def find_feta_case_files(root: str | Path, subject_id: str) -> tuple[Path, Path]:
     directory = Path(root) / subject_id / "anat"
-    images = sorted(directory.glob("*_T2w.nii.gz"))
+    image = find_feta_image(root, subject_id)
     labels = sorted(directory.glob("*_dseg.nii.gz"))
-    if len(images) != 1 or len(labels) != 1:
+    if len(labels) != 1:
         raise FileNotFoundError(f"Expected one T2w and one dseg for {subject_id} in {directory}.")
-    return images[0], labels[0]
+    return image, labels[0]
+
+
+def find_feta_image(root: str | Path, subject_id: str) -> Path:
+    """Find a case MRI without requiring or loading its expert label map."""
+
+    directory = Path(root) / subject_id / "anat"
+    images = sorted(directory.glob("*_T2w.nii.gz"))
+    if len(images) != 1:
+        raise FileNotFoundError(f"Expected one T2w image for {subject_id} in {directory}.")
+    return images[0]
+
+
+def generate_feta_predictions(
+    feta_root: str | Path,
+    subject_ids: Iterable[str],
+    prediction_dir: str | Path,
+    *,
+    checkpoint: str | Path | None = None,
+    device_name: str = "auto",
+) -> dict[str, Path]:
+    """Create missing FetalSynthSeg predictions and return every cached path.
+
+    The model is loaded only once when multiple predictions are missing. Expert
+    FeTA label maps are neither opened nor used by this path.
+    """
+
+    root = resolve_feta_root(feta_root)
+    prediction_dir = Path(prediction_dir).resolve()
+    prediction_dir.mkdir(parents=True, exist_ok=True)
+    paths = {
+        subject_id: prediction_dir / f"{subject_id}_fetalsynthseg.nii.gz"
+        for subject_id in dict.fromkeys(subject_ids)
+    }
+    checkpoint_path = Path(checkpoint or DEFAULT_FETALSYNTHSEG_CHECKPOINT).resolve()
+    expected_checkpoint_hash = _sha256(checkpoint_path) if checkpoint_path.is_file() else None
+    missing = []
+    for subject_id, path in paths.items():
+        metadata_path = prediction_dir / f"{subject_id}_fetalsynthseg.json"
+        image_path = find_feta_image(root, subject_id).resolve()
+        try:
+            metadata = json.loads(metadata_path.read_text())
+            cache_is_valid = (
+                path.is_file()
+                and Path(str(metadata["input"])).resolve() == image_path
+                and Path(str(metadata["output"])).resolve() == path
+                and bool(metadata.get("checkpoint_sha256"))
+                and (
+                    expected_checkpoint_hash is None
+                    or metadata["checkpoint_sha256"] == expected_checkpoint_hash
+                )
+            )
+        except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            cache_is_valid = False
+        if not cache_is_valid:
+            missing.append(subject_id)
+    if not missing:
+        return paths
+    if not checkpoint_path.is_file():
+        raise FileNotFoundError(
+            f"FetalSynthSeg checkpoint not found: {checkpoint_path}. "
+            "Run scripts/install_fetalsynthseg.sh --accept-license or pass --checkpoint."
+        )
+    from .segmentation import FetalSynthSegPredictor
+
+    predictor = FetalSynthSegPredictor(checkpoint_path, device_name=device_name)
+    for subject_id in missing:
+        predictor.segment(
+            find_feta_image(root, subject_id),
+            paths[subject_id],
+            metadata_path=prediction_dir / f"{subject_id}_fetalsynthseg.json",
+        )
+    return paths
 
 
 def collect_neurotypical_feta_volumes(
     feta_root: str | Path,
+    *,
+    prediction_dir: str | Path,
+    checkpoint: str | Path | None = None,
+    device_name: str = "auto",
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[dict[str, object]], pd.DataFrame]:
-    """Measure all FeTA cases explicitly labeled ``Neurotypical``."""
+    """Measure automatic predictions for cases labeled ``Neurotypical``."""
 
     root = resolve_feta_root(feta_root)
     participants = load_feta_participants(root)
@@ -72,16 +160,24 @@ def collect_neurotypical_feta_volumes(
     ].sort_values(["Gestational age", "participant_id"])
     if normal.empty:
         raise ValueError("No participants are labeled Neurotypical.")
+    predictions = generate_feta_predictions(
+        root,
+        normal.participant_id.astype(str),
+        prediction_dir,
+        checkpoint=checkpoint,
+        device_name=device_name,
+    )
     tissues, aggregates, qc_records = [], [], []
     for _, row in normal.iterrows():
         subject_id = str(row["participant_id"])
         age = float(row["Gestational age"])
-        _, segmentation_path = find_feta_case_files(root, subject_id)
+        segmentation_path = predictions[subject_id]
         tissue, aggregate, qc = measure_segmentation(
             segmentation_path,
             subject_id=subject_id,
             gestational_age_weeks=age,
         )
+        tissue["segmentation_source"] = "FetalSynthSeg automatic prediction"
         included = not bool(qc.get("warnings"))
         qc_records.append({"subject_id": subject_id, "included_in_reference": included, **qc})
         if included:
@@ -185,7 +281,7 @@ def fit_feta_matched_reference(
             "leave_one_out_rmse_log_volume": _leave_one_out_rmse(centered_age, log_volume, degree),
         }
     metadata: dict[str, object] = {
-        "source": "QC-passing FeTA 2.2 expert segmentations labeled Neurotypical",
+        "source": "QC-passing FetalSynthSeg v1 predictions for FeTA 2.2 cases labeled Neurotypical",
         "source_doi": FETA_DATA_DOI,
         "phenotype_filter": "Pathology == Neurotypical (case-insensitive exact match)",
         "subjects": int(data.subject_id.nunique()),
@@ -212,11 +308,19 @@ def fit_feta_matched_reference(
 def build_feta_matched_reference(
     feta_root: str | Path | None = None,
     *,
+    prediction_dir: str | Path,
+    checkpoint: str | Path | None = None,
+    device_name: str = "auto",
     degree: int = 2,
     quantiles: Iterable[float] = DEFAULT_QUANTILES,
 ) -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame, pd.DataFrame, list[dict[str, object]]]:
     root = resolve_feta_root(feta_root)
-    tissues, matched, qc_records, participants = collect_neurotypical_feta_volumes(root)
+    tissues, matched, qc_records, participants = collect_neurotypical_feta_volumes(
+        root,
+        prediction_dir=prediction_dir,
+        checkpoint=checkpoint,
+        device_name=device_name,
+    )
     curves, metadata = fit_feta_matched_reference(
         matched,
         degree=degree,
@@ -225,6 +329,16 @@ def build_feta_matched_reference(
     )
     metadata["feta_root_name"] = root.name
     metadata["normal_participant_rows"] = int(len(participants))
+    metadata["segmentation_method"] = "FetalSynthSeg v1 automatic prediction"
+    checkpoint_hashes = {
+        json.loads(
+            (Path(prediction_dir) / f"{subject_id}_fetalsynthseg.json").read_text()
+        )["checkpoint_sha256"]
+        for subject_id in metadata["subject_ids"]
+    }
+    if len(checkpoint_hashes) != 1:
+        raise ValueError("Automatic reference predictions do not share one checkpoint hash.")
+    metadata["checkpoint_sha256"] = checkpoint_hashes.pop()
     metadata["segmentation_qc_excluded_cases"] = [
         record["subject_id"] for record in qc_records if record.get("warnings")
     ]

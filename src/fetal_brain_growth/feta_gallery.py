@@ -1,4 +1,4 @@
-"""Build a local ten-case FeTA image/segmentation/growth-chart teaching set."""
+"""Build a ten-case FeTA teaching set from automatic segmentations."""
 
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ from .case_report import save_case_report
 from .charts import save_growth_chart
 from .feta_reference import (
     build_feta_matched_reference,
-    find_feta_case_files,
+    find_feta_image,
+    generate_feta_predictions,
     load_feta_participants,
     resolve_feta_root,
     save_feta_matched_reference,
@@ -87,7 +88,12 @@ def _save_overview(records: list[dict[str, object]], output_path: Path, *, dpi: 
             spine.set_edgecolor("#C43D3D" if flagged else "#8190A5")
         ax.set_xticks([])
         ax.set_yticks([])
-    fig.suptitle("Ten real FeTA fetal MRIs with expert segmentation outlines", fontsize=23, weight="bold", color="#17233C")
+    fig.suptitle(
+        "Ten real FeTA fetal MRIs with automatic FetalSynthSeg outlines",
+        fontsize=23,
+        weight="bold",
+        color="#17233C",
+    )
     fig.text(
         0.5,
         0.015,
@@ -109,8 +115,10 @@ def build_feta_gallery(
     case_ids: Iterable[str] = DEFAULT_CASE_IDS,
     reference: str = "feta-neurotypical",
     feta_degree: int = 2,
+    checkpoint: str | Path | None = None,
+    device_name: str = "auto",
 ) -> dict[str, Path]:
-    """Create local teaching figures from FeTA expert annotations.
+    """Create local teaching figures and measurements from automatic predictions.
 
     Raw FeTA data and generated case figures remain subject to the dataset's
     research/education terms and should not be committed automatically.
@@ -123,9 +131,13 @@ def build_feta_gallery(
         raise ValueError("Provide exactly ten unique case IDs.")
     participants = load_feta_participants(feta_root)
     output_dir.mkdir(parents=True, exist_ok=True)
+    prediction_dir = output_dir / "fetalsynthseg_predictions"
     if reference == "feta-neurotypical":
         curves, metadata, control_tissues, control_matched, control_qc = build_feta_matched_reference(
             feta_root,
+            prediction_dir=prediction_dir,
+            checkpoint=checkpoint,
+            device_name=device_name,
             degree=feta_degree,
         )
         save_feta_matched_reference(
@@ -149,6 +161,13 @@ def build_feta_gallery(
     cards = output_dir / "case_cards"
     cards.mkdir(exist_ok=True)
     tissues, aggregates, qc_records, records = [], [], [], []
+    prediction_paths = generate_feta_predictions(
+        feta_root,
+        case_ids,
+        prediction_dir,
+        checkpoint=checkpoint,
+        device_name=device_name,
+    )
 
     for subject_id in case_ids:
         row = participants.loc[participants.participant_id == subject_id]
@@ -156,13 +175,14 @@ def build_feta_gallery(
             raise ValueError(f"Could not uniquely identify {subject_id}.")
         age = float(row["Gestational age"].iloc[0])
         phenotype = str(row.Pathology.iloc[0])
-        image_path, segmentation_path = find_feta_case_files(feta_root, subject_id)
+        image_path = find_feta_image(feta_root, subject_id)
+        segmentation_path = prediction_paths[subject_id]
         tissue, aggregate, qc = measure_segmentation(
             segmentation_path,
             subject_id=subject_id,
             gestational_age_weeks=age,
         )
-        tissue["segmentation_source"] = "FeTA expert annotation"
+        tissue["segmentation_source"] = "FetalSynthSeg automatic prediction"
         tissues.append(tissue)
         aggregates.append(aggregate)
         qc_records.append({"subject_id": subject_id, **qc})
@@ -216,7 +236,7 @@ def build_feta_gallery(
             cards / f"{record['subject_id']}_case_report.png",
             subject_id=str(record["subject_id"]),
             gestational_age_weeks=float(record["gestational_age_weeks"]),
-            segmentation_source=f"FeTA expert annotation • {record['feta_phenotype']}",
+            segmentation_source=f"FetalSynthSeg automatic prediction • {record['feta_phenotype']}",
             regions=score_regions,
             dpi=220,
         )

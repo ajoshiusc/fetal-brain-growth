@@ -134,6 +134,8 @@ def command_feta_gallery(args: argparse.Namespace) -> None:
         args.output_dir,
         reference=args.reference,
         feta_degree=args.feta_degree,
+        checkpoint=args.checkpoint,
+        device_name=args.device,
         **kwargs,
     )
     print(json.dumps({key: str(value) for key, value in paths.items()}, indent=2))
@@ -144,6 +146,9 @@ def command_feta_reference(args: argparse.Namespace) -> None:
 
     curves, metadata, tissues, matched, qc_records = build_feta_matched_reference(
         args.feta_root,
+        prediction_dir=Path(args.output_dir) / "fetalsynthseg_predictions",
+        checkpoint=args.checkpoint,
+        device_name=args.device,
         degree=args.degree,
         quantiles=parse_quantiles(args.quantiles),
     )
@@ -230,18 +235,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     feta_reference = subparsers.add_parser(
         "feta-reference",
-        help="Fit all-region curves to FeTA cases labeled Neurotypical",
+        help="Fit all-region curves to automatic segmentations of neurotypical FeTA cases",
     )
     feta_reference.add_argument(
         "--feta-root",
         help="FeTA 2.2 BIDS root; defaults to FETA_ROOT or the detected local dataset",
     )
     feta_reference.add_argument("--degree", choices=(2, 3), type=int, default=2)
+    feta_reference.add_argument("--checkpoint", help="FetalSynthSeg checkpoint; defaults to models/KISPI-all_fss.ckpt")
+    feta_reference.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     feta_reference.add_argument("--quantiles", default="0.03,0.10,0.25,0.50,0.75,0.90,0.97")
     feta_reference.add_argument("--output-dir", required=True)
     feta_reference.set_defaults(func=command_feta_reference)
 
-    gallery = subparsers.add_parser("feta-gallery", help="Build a local real ten-case FeTA teaching gallery")
+    gallery = subparsers.add_parser(
+        "feta-gallery",
+        help="Build a ten-case FeTA gallery from automatic FetalSynthSeg predictions",
+    )
     gallery.add_argument(
         "--feta-root",
         help="FeTA 2.2 BIDS root; defaults to FETA_ROOT or the detected local dataset",
@@ -255,6 +265,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Default uses all FeTA cases labeled Neurotypical; Ren is the literature alternative",
     )
     gallery.add_argument("--feta-degree", choices=(2, 3), type=int, default=2)
+    gallery.add_argument("--checkpoint", help="FetalSynthSeg checkpoint; defaults to models/KISPI-all_fss.ckpt")
+    gallery.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     gallery.set_defaults(func=command_feta_gallery)
     return parser
 

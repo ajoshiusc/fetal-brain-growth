@@ -28,5 +28,6 @@ differences remain; the result is not a diagnosis.
 This public example intentionally retains the Ren comparison because the FeTA
 2.2 control data are access-controlled and their derived curves are not
 committed. When FeTA is mounted locally, `fbg feta-gallery` and
-`notebooks/FeTA_10_Case_Meeting.ipynb` instead use the exact-label nine-measure
-FeTA neurotypical teaching reference by default.
+`notebooks/FeTA_10_Case_Meeting.ipynb` instead run or reuse automatic
+FetalSynthSeg predictions and use the resulting exact-label nine-measure FeTA
+neurotypical teaching reference by default.
