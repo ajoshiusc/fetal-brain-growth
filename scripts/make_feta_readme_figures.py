@@ -130,7 +130,7 @@ def main() -> None:
         gestational_age_weeks=gestational_age,
         segmentation_source=f"FetalSynthSeg automatic prediction • {phenotype}",
         regions=FETA_MATCHED_REFERENCE_REGIONS,
-        dpi=300,
+        dpi=360,
     )
     print(
         json.dumps(

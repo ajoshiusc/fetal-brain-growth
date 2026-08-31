@@ -50,7 +50,7 @@ def _case_status(
     details = []
     for row in flagged.itertuples(index=False):
         direction = "low" if row.status == "low_reference_flag" else "high"
-        details.append(f"{row.region}: {direction}, bounded P{row.estimated_percentile_bounded:.0f}")
+        details.append(f"{row.region}: {direction}, {row.percentile_display}")
     return "one_or_more_reference_flags", "; ".join(details)
 
 
@@ -238,7 +238,7 @@ def build_feta_gallery(
             gestational_age_weeks=float(record["gestational_age_weeks"]),
             segmentation_source=f"FetalSynthSeg automatic prediction • {record['feta_phenotype']}",
             regions=score_regions,
-            dpi=220,
+            dpi=300,
         )
 
     summary = pd.DataFrame(summaries)

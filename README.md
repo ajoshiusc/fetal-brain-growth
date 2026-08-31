@@ -127,10 +127,11 @@ python scripts/make_real_example_figures.py \
 
 On the secondary Ren comparison, the automatic volumes place this example as
 follows. The percentile estimate is interpolated between the available
-quantiles and bounded to P3–P97; it is not a population-calibrated diagnostic
-probability.
+quantiles. Interior positions are labeled as estimates; values beyond the
+modeled range are shown as `P3 or lower` or `P97 or higher`. They are not
+population-calibrated diagnostic probabilities.
 
-| Definition-aligned measure | Volume | Bounded position | P3–P97 screen |
+| Definition-aligned measure | Volume | Estimated position | P3–P97 screen |
 |---|---:|---:|---|
 | Total brain | 172.8 mL | P33 | within interval |
 | Intracranial volume | 278.7 mL | P7 | within interval |
@@ -234,8 +235,9 @@ following transparent construction:
 Here P50 is the fitted median. P3–P97 are estimated population intervals under
 a constant log-Normal residual assumption; they are not confidence intervals
 for the fitted median. Case positions are interpolated between the seven fitted
-quantiles and bounded to P3–P97. Thus “P97 bounded” means P97 or higher, not an
-exact tail probability.
+quantiles within P3–P97. Interior values are marked as estimates. Measurements
+outside the modeled range are shown as `P3 or lower` or `P97 or higher`, not as
+exact tail probabilities.
 
 The output metadata records the exact QC-passing count and observed age range
 for the generated predictions. The output contains
@@ -287,8 +289,9 @@ reference values:
 
 For a case, the expected quantiles are interpolated at its exact gestational
 age, and its displayed percentile is interpolated between adjacent quantile
-values and bounded to P3–P97. Measurements below P3 or above P97 receive a
-research flag only when label definitions are compatible. Total brain,
+values. Interior values are labeled `(estimated)`; measurements beyond the
+available curves are shown as `P3 or lower` or `P97 or higher`. Measurements
+below P3 or above P97 receive a research flag only when label definitions are compatible. Total brain,
 intracranial volume, external CSF, and cerebellum pass that guard; cortical gray
 matter, white-plus-deep-gray, ventricles, and brainstem remain comparison-only.
 These bands are estimated population reference intervals, not confidence

@@ -122,14 +122,15 @@ def main() -> None:
             "title='Real fetal MRI example across all Ren 2022 volume measures', "
             "subtitle='30-week IMAGINE atlas • green = definition-aligned screen; orange = comparison only')\n"
             "display(Image(filename=str(chart), width=1200))\n"
-            "display(scores[['region','volume_ml','estimated_percentile_bounded','status','interpretation_note']])"
+            "display(scores[['region','volume_ml','percentile_display','status','interpretation_note']])"
         ),
         nbf.v4.new_markdown_cell(
             "### Case position and reference flags\n\n"
             "At the fetus's exact gestational age, each expected quantile is interpolated from the curve. The "
-            "reported percentile is then linearly interpolated between the seven quantile values and is **bounded "
-            "to P3–P97**: `P3 bounded` means P3 or lower and `P97 bounded` means P97 or higher, not an exact tail "
-            "probability. A research flag is produced below P3 or above P97. All eight measures are plotted, but "
+            "reported percentile is then linearly interpolated between the seven quantile values. Interior values "
+            "are labeled as estimates, such as `P72 (estimated)`. Values outside the modeled range are reported as "
+            "`P3 or lower` or `P97 or higher`, not as exact tail probabilities. A research flag is produced below "
+            "P3 or above P97. All eight measures are plotted, but "
             "only total brain, intracranial volume, external CSF, and cerebellum are definition-aligned enough for "
             "automated Ren flags; the four orange points are comparison-only because anatomical definitions differ."
         ),
@@ -183,7 +184,7 @@ def main() -> None:
             "        dpi=300,\n"
             "    )\n"
             "    display(Image(filename=str(feta_chart), width=1200))\n"
-            "    display(feta_scores[['region','volume_ml','estimated_percentile_bounded','status']])"
+            "    display(feta_scores[['region','volume_ml','percentile_display','status']])"
         ),
         nbf.v4.new_markdown_cell(
             "## 6. Primary-reference radiology case report\n\n"

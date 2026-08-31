@@ -15,6 +15,35 @@ from .radiology import VIEW_SPECS, _best_slice, _crop_bounds, _display_slice, lo
 from .references import DEFAULT_QUANTILES
 
 
+def _percentile_display(point: pd.Series) -> str:
+    """Return a reader-facing percentile label, including explicit tail limits."""
+
+    display = getattr(point, "percentile_display", None)
+    if isinstance(display, str) and display:
+        return display
+    percentile = float(point.estimated_percentile_bounded)
+    if point.status == "low_reference_flag" or percentile <= 3:
+        return "P3 or lower"
+    if point.status == "high_reference_flag" or percentile >= 97:
+        return "P97 or higher"
+    return f"P{percentile:.0f} (estimated)"
+
+
+def _chart_column_count(region_count: int) -> int:
+    """Choose two to four columns while minimizing unused report panels."""
+
+    if region_count <= 1:
+        return 1
+    candidates = range(2, min(4, region_count) + 1)
+    return min(
+        candidates,
+        key=lambda columns: (
+            int(np.ceil(region_count / columns)) * columns - region_count,
+            int(np.ceil(region_count / columns)),
+        ),
+    )
+
+
 def _draw_image_panel(
     ax: plt.Axes,
     intensity: np.ndarray,
@@ -34,12 +63,12 @@ def _draw_image_panel(
     for label in sorted(FETA_LABELS):
         mask = overlay == label
         if label and mask.any():
-            ax.contour(mask.astype(float), levels=[0.5], colors=[LABEL_COLORS[label]], linewidths=1.2, origin="lower")
-    ax.set_title(view.capitalize(), color="white", fontsize=15, weight="bold")
-    ax.text(0.015, 0.50, spec["left"], transform=ax.transAxes, color="white", va="center", fontsize=11, weight="bold")
-    ax.text(0.985, 0.50, spec["right"], transform=ax.transAxes, color="white", ha="right", va="center", fontsize=11, weight="bold")
-    ax.text(0.50, 0.985, spec["top"], transform=ax.transAxes, color="white", ha="center", va="top", fontsize=11, weight="bold")
-    ax.text(0.50, 0.015, spec["bottom"], transform=ax.transAxes, color="white", ha="center", va="bottom", fontsize=11, weight="bold")
+            ax.contour(mask.astype(float), levels=[0.5], colors=[LABEL_COLORS[label]], linewidths=1.45, origin="lower")
+    ax.set_title(view.capitalize(), color="white", fontsize=17, weight="bold", pad=5)
+    ax.text(0.015, 0.50, spec["left"], transform=ax.transAxes, color="white", va="center", fontsize=13, weight="bold")
+    ax.text(0.985, 0.50, spec["right"], transform=ax.transAxes, color="white", ha="right", va="center", fontsize=13, weight="bold")
+    ax.text(0.50, 0.985, spec["top"], transform=ax.transAxes, color="white", ha="center", va="top", fontsize=13, weight="bold")
+    ax.text(0.50, 0.015, spec["bottom"], transform=ax.transAxes, color="white", ha="center", va="bottom", fontsize=13, weight="bold")
     ax.set_axis_off()
 
 
@@ -55,22 +84,26 @@ def save_case_report(
     dice: pd.DataFrame | None = None,
     segmentation_source: str = "FetalSynthSeg prediction",
     regions: tuple[str, ...] = ("total_brain", "intracranial_volume", "external_csf", "cerebellum"),
-    dpi: int = 300,
+    dpi: int = 320,
 ) -> Path:
     """Save a radiology-ready real-case card with the requested reference panels."""
 
     intensity, labels, orientation = load_aligned_canonical(image_path, segmentation_path)
     foreground = intensity[labels > 0]
     vmin, vmax = np.percentile(foreground, [1, 99]) if foreground.size else (float(intensity.min()), float(intensity.max()))
-    chart_columns = 3 if len(regions) >= 7 else min(4, len(regions))
+    chart_columns = _chart_column_count(len(regions))
     chart_rows = int(np.ceil(len(regions) / chart_columns))
-    fig = plt.figure(figsize=(20, 5.6 + 4.8 * chart_rows), facecolor="white")
+    fig = plt.figure(figsize=(20, 4.6 + 4.25 * chart_rows), facecolor="white")
     grid = fig.add_gridspec(
         1 + chart_rows,
         12,
-        height_ratios=(1.10, *([1.0] * chart_rows)),
-        hspace=0.42,
-        wspace=0.36,
+        height_ratios=(0.90, *([1.0] * chart_rows)),
+        hspace=0.30,
+        wspace=0.28,
+        left=0.045,
+        right=0.985,
+        bottom=0.095,
+        top=0.925,
     )
     for index, view in enumerate(VIEW_SPECS):
         ax = fig.add_subplot(grid[0, index * 3 : (index + 1) * 3], facecolor="#080B10")
@@ -78,22 +111,33 @@ def save_case_report(
 
     text_axis = fig.add_subplot(grid[0, 9:12])
     text_axis.axis("off")
-    text_axis.text(0, 0.98, segmentation_source, va="top", fontsize=15, weight="bold", color=INK)
+    text_axis.text(0, 0.98, segmentation_source, va="top", fontsize=17, weight="bold", color=INK)
     if dice is not None:
-        text_axis.text(0, 0.87, f"Mean tissue Dice: {dice.dice.mean():.3f}", va="top", fontsize=12, color=INK)
+        text_axis.text(0, 0.86, f"Mean tissue Dice: {dice.dice.mean():.3f}", va="top", fontsize=13, color=INK)
         dice_lines = [f"{row.tissue}: {row.dice:.3f}" for row in dice.itertuples(index=False)]
         midpoint = int(np.ceil(len(dice_lines) / 2))
-        text_axis.text(0, 0.76, "\n".join(dice_lines[:midpoint]), va="top", fontsize=9.8, linespacing=1.28, color="#435166")
-        text_axis.text(0.54, 0.76, "\n".join(dice_lines[midpoint:]), va="top", fontsize=9.8, linespacing=1.28, color="#435166")
+        text_axis.text(0, 0.74, "\n".join(dice_lines[:midpoint]), va="top", fontsize=10.5, linespacing=1.25, color="#435166")
+        text_axis.text(0.54, 0.74, "\n".join(dice_lines[midpoint:]), va="top", fontsize=10.5, linespacing=1.25, color="#435166")
+    else:
+        text_axis.text(
+            0,
+            0.82,
+            "This automatic segmentation supplies every plotted volume.",
+            va="top",
+            fontsize=12,
+            color="#435166",
+            wrap=True,
+        )
     legend = [
         Line2D([0], [0], color=LABEL_COLORS[label], lw=2.5, label=LABEL_TITLES[label])
         for label in sorted(FETA_LABELS) if label
     ]
     text_axis.legend(
         handles=legend,
-        loc="lower left",
+        loc="lower left" if dice is not None else "upper left",
+        bbox_to_anchor=None if dice is not None else (0, 0.66),
         frameon=False,
-        fontsize=9.5,
+        fontsize=10.5,
         ncol=2,
         borderaxespad=0,
         columnspacing=0.8,
@@ -112,7 +156,7 @@ def save_case_report(
         ax.scatter(
             point.gestational_age_weeks,
             point.volume_ml,
-            s=100,
+            s=120,
             marker="X" if point.status in {"low_reference_flag", "high_reference_flag"} else "o",
             color=POINT_COLORS.get(point.status, "#111111"),
             edgecolor="white",
@@ -120,32 +164,41 @@ def save_case_report(
             zorder=7,
         )
         ax.set_title(
-            f"{REGION_TITLES[region]}\n{point.volume_ml:.1f} mL • P{point.estimated_percentile_bounded:.0f} (bounded)",
+            f"{REGION_TITLES[region]}\n{point.volume_ml:.1f} mL • {_percentile_display(point)}",
             loc="left",
-            fontsize=13,
+            fontsize=15,
             weight="bold",
             color=INK,
         )
-        ax.set_xlabel("Gestational age (weeks)", fontsize=11.5)
-        ax.set_ylabel("Volume (mL)", fontsize=11.5)
+        if row == chart_rows - 1:
+            ax.set_xlabel("Gestational age (weeks)", fontsize=12.5)
+        ax.set_ylabel("Volume (mL)", fontsize=12.5)
         ax.grid(axis="y", color="#DDE3EA", linewidth=0.7)
         ax.spines[["top", "right"]].set_visible(False)
-        ax.tick_params(labelsize=10.5)
+        ax.tick_params(labelsize=11.5)
 
     fig.suptitle(
         f"{subject_id} • {gestational_age_weeks:.1f} weeks • real fetal T2 SVR",
         x=0.04,
         y=0.985,
         ha="left",
-        fontsize=23,
+        fontsize=26,
         weight="bold",
         color=INK,
     )
     fig.text(
         0.04,
+        0.032,
+        "Percentiles inside P3–P97 are interpolated estimates • Tail values are shown as P3 or lower / P97 or higher",
+        fontsize=10.5,
+        weight="bold",
+        color="#435166",
+    )
+    fig.text(
+        0.04,
         0.012,
         f"Canonical {''.join(orientation)} • radiological convention • research reference only, not a diagnosis",
-        fontsize=10,
+        fontsize=10.5,
         color="#5D6877",
     )
     output_path = Path(output_path)

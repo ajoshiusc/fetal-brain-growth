@@ -29,7 +29,8 @@ def test_meeting_notebooks_explain_quantile_provenance_and_limitations():
 
     assert "reconstructed centiles" in demo_markdown
     assert "Q_q(t) = max(0" in demo_markdown
-    assert "bounded to P3–P97" in demo_markdown
+    assert "P72 (estimated)" in demo_markdown
+    assert "P97 or higher" in demo_markdown
     assert "Primary local reference: FeTA-generated matched quantiles" in demo_markdown
     assert "no FeTA subject image" in demo_markdown
     assert "protocol-matched teaching reference" in feta_markdown

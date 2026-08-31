@@ -105,14 +105,14 @@ def main() -> None:
             ")\n"
             "display(Image(filename=str(ren_chart), width=1500))\n"
             "display(ren_scores[['subject_id','gestational_age_weeks','region','volume_ml',"
-            "'estimated_percentile_bounded','status']])"
+            "'percentile_display','status']])"
         ),
         nbf.v4.new_markdown_cell("## Flagged measurements and per-case report"),
         nbf.v4.new_code_cell(
             "scores = pd.read_csv(paths['scores'])\n"
             "flagged = scores[scores.status.isin(['low_reference_flag','high_reference_flag'])]\n"
             "display(flagged[['subject_id','gestational_age_weeks','region','volume_ml',"
-            "'estimated_percentile_bounded','status']])\n"
+            "'percentile_display','status']])\n"
             "display(Image(filename=str(OUT/'case_cards/sub-050_case_report.png'), width=1500))"
         ),
         nbf.v4.new_markdown_cell(
@@ -129,7 +129,7 @@ def main() -> None:
             "`Q_q(GA) = exp(fitted_log_volume(GA) + Φ⁻¹(q) × s)` for P3/P10/P25/P50/P75/P90/P97.\n\n"
             "These are estimated population intervals under a log-Normal residual assumption, not confidence "
             "intervals for the fitted median. Case percentiles are linearly interpolated between the seven curves "
-            "and bounded to P3–P97; values outside that interval receive a research flag. Cubic fitting is available "
+            "within P3–P97; values outside are shown as `P3 or lower` or `P97 or higher` and receive a research flag. Cubic fitting is available "
             "with `fbg feta-reference --degree 3`, but is only a sensitivity analysis for this small cohort. Because "
             "some displayed normal cases also helped fit the curves, their positions are in-sample."
         ),

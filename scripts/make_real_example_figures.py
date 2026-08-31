@@ -69,7 +69,7 @@ def main() -> None:
         gestational_age_weeks=args.gestational_age,
         dice=dice,
         regions=tuple(REFERENCE_GROUPS),
-        dpi=300,
+        dpi=360,
     )
 
     dice.to_csv(output_dir / "real_example_dice.csv", index=False)

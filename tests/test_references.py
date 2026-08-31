@@ -43,6 +43,43 @@ def test_definition_guard_prevents_overclassification():
     )
     score = score_against_curves(values, curves).iloc[0]
     assert score.status == "comparison_only_definition_mismatch"
+    assert score.percentile_display == "P97 or higher"
+
+
+def test_percentile_display_distinguishes_estimates_from_tail_limits():
+    curves, _ = build_table_curves(grid_step_weeks=1)
+    row = curves.loc[
+        (curves.region == "total_brain")
+        & np.isclose(curves.gestational_age_weeks, 30)
+    ].iloc[0]
+    values = pd.DataFrame(
+        [
+            {
+                "subject_id": "low",
+                "gestational_age_weeks": 30,
+                "region": "total_brain",
+                "volume_ml": row.p3_ml - 1,
+            },
+            {
+                "subject_id": "middle",
+                "gestational_age_weeks": 30,
+                "region": "total_brain",
+                "volume_ml": row.p50_ml,
+            },
+            {
+                "subject_id": "high",
+                "gestational_age_weeks": 30,
+                "region": "total_brain",
+                "volume_ml": row.p97_ml + 1,
+            },
+        ]
+    )
+
+    scores = score_against_curves(values, curves).set_index("subject_id")
+
+    assert scores.loc["low", "percentile_display"] == "P3 or lower"
+    assert scores.loc["middle", "percentile_display"] == "P50 (estimated)"
+    assert scores.loc["high", "percentile_display"] == "P97 or higher"
 
 
 def test_local_quadratic_quantile_reference():

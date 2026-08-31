@@ -213,6 +213,15 @@ def score_against_curves(
         estimated_percentile = float(
             np.interp(observed, quantile_values, np.asarray(quantiles), left=quantiles[0], right=quantiles[-1])
         )
+        if observed < quantile_values[0]:
+            percentile_bound = "lower"
+            percentile_display = f"P{100 * quantiles[0]:g} or lower"
+        elif observed > quantile_values[-1]:
+            percentile_bound = "upper"
+            percentile_display = f"P{100 * quantiles[-1]:g} or higher"
+        else:
+            percentile_bound = None
+            percentile_display = f"P{100 * estimated_percentile:.0f} (estimated)"
         rows.append(
             {
                 "subject_id": record.subject_id,
@@ -221,6 +230,8 @@ def score_against_curves(
                 "volume_ml": observed,
                 **expected,
                 "estimated_percentile_bounded": 100 * estimated_percentile,
+                "percentile_bound": percentile_bound,
+                "percentile_display": percentile_display,
                 "status": status,
                 "interpretation_note": DEFINITION_MISMATCH_NOTES.get(
                     record.region,
