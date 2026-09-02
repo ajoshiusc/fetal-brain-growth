@@ -177,6 +177,39 @@ interpolation, selects the largest labeled cross-section in each plane, and
 labels orientation explicitly. Patient right appears on image left in axial
 and coronal panels.
 
+## Run the complete pipeline from DICOM
+
+The end-to-end wrapper accepts one DICOM study in any directory layout,
+selects up to four fetal-brain T2 stacks, runs the installed GPU SVR workflow,
+runs checksum-verified FetalSynthSeg, measures all nine FeTA-compatible
+volumes, and writes the high-resolution radiology growth report:
+
+```bash
+fbg-dicom-report \
+  /data/case001/DICOMOBJ \
+  /data/case001/fbg_report \
+  --subject-id case001 \
+  --svr-root /path/to/svr_gpu \
+  --svr-device 0 \
+  --fss-device cuda
+```
+
+Gestational age is read from an explicit DICOM Structured Report text value
+when available. The extractor also understands `GA`/`EGA`, last-menstrual-date,
+and estimated-due-date metadata. Explicit report ages have priority over
+date-derived ages because DICOM dates may be shifted during deidentification;
+any disagreement is recorded in provenance. If age is absent, pass an audited
+override such as `--gestational-age 33+1`.
+
+Use `--dry-run` to validate the single-study input, show the GA evidence, and
+print the SVR command without reconstructing. Use repeatable
+`--series-keyword` options or `--echo-time` when automatic series selection
+needs site-specific constraints. The output directory contains the SVR run,
+command logs, reconstructed NIfTI, FetalSynthSeg labels and metadata, tissue
+and aggregate volumes, reference scores, segmentation QC, pipeline provenance,
+and the final PNG. All outputs remain research-use only and require visual QC
+and expert review.
+
 For a cohort, edit [`examples/manifest.csv`](examples/manifest.csv), then run:
 
 ```bash

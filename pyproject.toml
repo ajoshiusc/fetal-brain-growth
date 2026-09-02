@@ -23,6 +23,7 @@ dependencies = [
   "nibabel>=5.2",
   "numpy>=1.26",
   "pandas>=2.0",
+  "pydicom>=2.4",
   "scikit-learn>=1.4",
   "scipy>=1.11",
 ]
@@ -48,6 +49,7 @@ Issues = "https://github.com/ajoshiusc/fetal-brain-growth/issues"
 
 [project.scripts]
 fbg = "fetal_brain_growth.cli:main"
+fbg-dicom-report = "fetal_brain_growth.dicom_pipeline:main"
 fbg-segment = "fetal_brain_growth.segmentation:main"
 
 [tool.setuptools]
